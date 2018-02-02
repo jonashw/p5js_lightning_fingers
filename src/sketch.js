@@ -64,15 +64,16 @@ function lightning(x1,y1,x2/*optional*/,y2/*optional*/){
     stroke(color);
     fill(color);
   }
-  let C = 2 * d / n;
+  let C = 5 * d / n;
   let HC = C / 2;
+  let K = 10;
   strokeWeight(5 * displayDensity());
   if(x2 != undefined && y2 != undefined){
     for(var i=n; i>0; i--){
       dx = (x - x2) / i;
       dy = (y - y2) / i;
-      x_next = x - dx + (noise(frameCount) * C - HC);
-      y_next = y - dy + (noise(frameCount / 30) * C - HC);
+      x_next = x - dx + (noise(frameCount / random(n)) * C - HC);
+      y_next = y - dy + (noise(frameCount / random(i)) * C - HC);
       line(x, y, x_next, y_next);
       x = x_next;
       y = y_next;
