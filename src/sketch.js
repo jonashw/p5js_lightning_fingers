@@ -54,16 +54,12 @@ function touchStarted(){ return false; }
 function mousePressed(){ return false; }
 
 function lightning(x1,y1,x2/*optional*/,y2/*optional*/){
+  push();
   let x = x1; 
   let y = y1;
   let x_next, y_next;
   let d = 50 * displayDensity();
   let n = 10;
-  let color = lightningColors[parseInt(noise(frameCount/30) * lightningColors.length) - 1];
-  if(color){
-    stroke(color);
-    fill(color);
-  }
   let C = 5 * d / n;
   let HC = C / 2;
   let K = 10;
@@ -86,6 +82,7 @@ function lightning(x1,y1,x2/*optional*/,y2/*optional*/){
     noStroke();
     ellipse(x1, y1, d, d);
   }
+  pop();
 }
 
 function draw() {
@@ -95,13 +92,19 @@ function draw() {
   update();
   if(!drawing) return;
   bg.draw();
+  let color = lightningColors[parseInt(noise(frameCount/30) * lightningColors.length) - 1];
+  if(color){
+    stroke(color);
+    fill(color);
+  }
   touches.forEach(t => {
     lightning(center.x, center.y, t.x, t.y);
   });
   if(mouseIsPressed){
     lightning(center.x, center.y, mouseX, mouseY);
   }
-  lightning(center.x, center.y);
+  let d = 50 * displayDensity();
+  ellipse(center.x, center.y, d, d);
 }
 
 function update(){
