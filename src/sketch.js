@@ -6,6 +6,7 @@ var drawing = true;
 var touchColor;
 var center = {x:0, y:0};
 let lightningColors = [];
+let oscillators;
 function setup() {
   colorMode(HSL, 255, 255, 255, 100);
   //greatly improve performance with a pixelDensity less than 1:
@@ -25,6 +26,29 @@ function setup() {
   createCanvas(windowWidth, windowHeight);
   windowResized();
   lightningColors = countFrom(200,55).map(l => color(l,255,100));
+  let freqs = [
+    // source: https://pages.mtu.edu/~suits/notefreqs.html
+    220, // A  (I)
+    277, // C# (III)
+    330, // E  (V)
+    392, // G  (VII)
+    440, // A  (I)
+    554, // C# (III)
+    659, // E  (V)
+    783, // G  (VII)
+    880, // A  (I)
+    1109,// C# (III)
+    1319,// E  (V)
+    1568 //G   (VII)
+  ];
+  oscillators = range(0,19).map(i => {
+    let osc = new p5.Oscillator();
+    osc.setType('sawtooth');
+    osc.phase(i/5);
+    osc.freq(freqs[i % freqs.length]);
+    osc.amp(0.5);
+    return osc;
+  });
 }
 
 function range(min, max){
@@ -70,7 +94,11 @@ function windowResized() {
 }
 let touchCircles = [];
 let exitingTouchCircles = [];
+
 function touchStarted(){
+  for(var i=0; i<touches.length; i++){
+    oscillators[i].start();
+  }
   let touch = touches[touches.length-1];
   let d = 50 * displayDensity();
   touchCircles.push(new Circle(touch.id, createVector(touch.x, touch.y), d, 10));
@@ -78,6 +106,9 @@ function touchStarted(){
   return false; /* This is to prevent pinch-zooming on touch devices: */
 }
 function touchEnded(){
+  for(var i=touches.length; 0<=i && i<oscillators.length; i++){
+    oscillators[i].stop();
+  }
   let newlyEndedTouchCircles = touchCircles.filter(tc => !touches.some(t => tc.containsPoint(t)));
   let par = partition(touchCircles, tc => touches.some(t => tc.containsPoint(t)));
   touchCircles = par.true;
