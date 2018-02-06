@@ -43,13 +43,52 @@ function countFrom(from, count){
   return values;
 }
 
+function Circle(id,position,diameter,lifetime){
+  this.id = id;
+  this.position = position;
+  this.diameter = diameter;
+  this.radius = diameter/2;
+  this.lifetime = lifetime;
+  this.lifeLeft = lifetime;
+  this.draw = function(){
+    ellipse(pos.x, pos.y, diameter, diameter);
+  };
+  this.containsPoint = function(point){
+    return dist(this.position.x, this.position.y, point.x, point.y) <= this.radius;
+  };
+  this.stepToward = function(x, y){
+    this.position.x += this.heading.x/this.lifetime;
+    this.position.y += this.heading.y/this.lifetime;
+    this.lifeLeft--;
+  };
+}
+
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
   center.x = windowWidth/2;
   center.y = windowHeight/2;
 }
-/* This is to prevent pinch-zooming on touch devices: */
-function touchStarted(){ return false; }
+let touchCircles = [];
+let exitingTouchCircles = [];
+function touchStarted(){
+  let touch = touches[touches.length-1];
+  let d = 50 * displayDensity();
+  touchCircles.push(new Circle(touch.id, createVector(touch.x, touch.y), d, 10));
+  console.log(`touch started (total touches: ${touches.length}): `, touchCircles);
+  return false; /* This is to prevent pinch-zooming on touch devices: */
+}
+function touchEnded(){
+  let newlyEndedTouchCircles = touchCircles.filter(tc => !touches.some(t => tc.containsPoint(t)));
+  let par = partition(touchCircles, tc => touches.some(t => tc.containsPoint(t)));
+  touchCircles = par.true;
+  let c = createVector(center.x, center.y);
+  for(let i=0; i<par.false.length; i++){
+    par.false[i].heading = p5.Vector.sub(c, par.false[i].position);
+    exitingTouchCircles.push(par.false[i]);
+  }
+  console.log('finished touches:', newlyEndedTouchCircles);
+  return false; /* This is to prevent pinch-zooming on touch devices: */
+}
 /* I'm not sure if this is strictly necessary: */
 function mousePressed(){ return false; }
 
@@ -58,8 +97,8 @@ function lightning(x1,y1,x2/*optional*/,y2/*optional*/){
   let x = x1; 
   let y = y1;
   let x_next, y_next;
-  let d = 50 * displayDensity();
   let n = 10;
+  let d = 50 * displayDensity();
   let C = 5 * d / n;
   let HC = C / 2;
   let K = 10;
@@ -75,12 +114,8 @@ function lightning(x1,y1,x2/*optional*/,y2/*optional*/){
       y = y_next;
     }
     line(x, y, x2, y2);
-    noStroke();
-    ellipse(x1, y1, d, d);
-    ellipse(x2, y2, d, d);
   } else {
     noStroke();
-    ellipse(x1, y1, d, d);
   }
   pop();
 }
@@ -97,13 +132,25 @@ function draw() {
     stroke(color);
     fill(color);
   }
+  let d = 50 * displayDensity();
   touches.forEach(t => {
     lightning(center.x, center.y, t.x, t.y);
+    ellipse(t.x, t.y, d, d);
   });
   if(mouseIsPressed){
     lightning(center.x, center.y, mouseX, mouseY);
+    ellipse(mouseX, mouseY, d, d);
   }
-  let d = 50 * displayDensity();
+  exitingTouchCircles.forEach(tc => {
+    ellipse(tc.position.x, tc.position.y, 50, 50);
+    lightning(center.x, center.y, tc.position.x, tc.position.y);
+    tc.stepToward(center.x, center.y);
+  });
+  for(var i=exitingTouchCircles.length-1; i>=0; i--){
+    if(exitingTouchCircles[i].lifeLeft <= 0){
+      exitingTouchCircles.splice(i,1);
+    }
+  }
   ellipse(center.x, center.y, d, d);
 }
 
@@ -121,4 +168,18 @@ function keyTyped(){
     drawing = !drawing;
     console.log('drawing ' + (drawing ? 'resumed' : 'paused'));
   }
+}
+
+function partition(array, predicate){
+  let trues = [];
+  let falses = [];
+  for(var i=0; i<array.length; i++){
+    let item = array[i];
+    if(predicate(item)){
+      trues.push(item);
+    } else {
+      falses.push(item);
+    }
+  }
+  return {true: trues, false: falses};
 }
