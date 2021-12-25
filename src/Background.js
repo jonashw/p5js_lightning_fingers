@@ -1,4 +1,4 @@
-function Background(colors){
+function Background(s,colors){
   let _colors = new CircularArray(colors);
 
   this.update = function(){
@@ -7,7 +7,7 @@ function Background(colors){
 
   this.draw = function(){
     let color = _colors.getCurrent();
-    background(color);
+    s.background(color);
     /* The following does not work as expected.  
     ** I need to learn more about p5.Color! */
     //let p = 50;
