@@ -7,6 +7,8 @@ var touchColor;
 var center = {x:0, y:0};
 let lightningColors = [];
 let oscillators;
+const oscillatorWaves = new CircularArray([ 'triangle', 'sine', 'sawtooth','square' ]);
+
 function setup() {
   colorMode(HSL, 255, 255, 255, 100);
   //greatly improve performance with a pixelDensity less than 1:
@@ -25,46 +27,52 @@ function setup() {
   angleMode(DEGREES);
   createCanvas(windowWidth, windowHeight);
   windowResized();
-  lightningColors = countFrom(200,55).map(l => color(l,255,100));
+  lightningColors = Array(55).fill().map((_,i) => color(200 + i,255,100));
+  /*
+  https://npm.runkit.com/@tonaljs/chord:
+  var note = require("@tonaljs/note")
+  var chord = require("@tonaljs/chord")
+  Array.prototype.concat.apply([], [
+      chord.getChord("13","C4").notes,
+      chord.getChord("13","C6").notes,
+      chord.getChord("13","C8").notes,
+      chord.getChord("13","C10").notes
+  ]).map(note.freq).join(',\n');
+  */
   let freqs = [
-    // source: https://pages.mtu.edu/~suits/notefreqs.html
-    220, // A  (I)
-    277, // C# (III)
-    330, // E  (V)
-    392, // G  (VII)
-    440, // A  (I)
-    554, // C# (III)
-    659, // E  (V)
-    783, // G  (VII)
-    880, // A  (I)
-    1109,// C# (III)
-    1319,// E  (V)
-    1568 //G   (VII)
+    261.6255653005986,
+    329.6275569128699,
+    391.99543598174927,
+    466.1637615180899,
+    587.3295358348151,
+    880,
+    1046.5022612023945,
+    1318.5102276514797,
+    1567.981743926997,
+    1864.6550460723597,
+    2349.31814333926,
+    3520,
+    4186.009044809578,
+    5274.040910605919,
+    6271.926975707989,
+    7458.620184289437,
+    9397.272573357044,
+    14080,
+    16744.036179238312,
+    21096.16364242367,
+    25087.70790283195,
+    29834.480737157748,
+    37589.09029342818,
+    56320
   ];
-  oscillators = range(0,19).map(i => {
+  oscillators = Array(20).fill().map((_,i) => {
     let osc = new p5.Oscillator();
-    osc.setType('sawtooth');
+    osc.setType(oscillatorWaves.getCurrent());
     osc.phase(i/5);
     osc.freq(freqs[i % freqs.length]);
     osc.amp(0.5);
     return osc;
   });
-}
-
-function range(min, max){
-  let values = [];
-  for(let n=min; n<=max; n++){
-    values.push(n);
-  }
-  return values;
-}
-
-function countFrom(from, count){
-  let values = [];
-  for(let i=0; i<count; i++){
-    values.push(from + i);
-  }
-  return values;
 }
 
 function Circle(id,position,diameter,lifetime){
@@ -85,6 +93,10 @@ function Circle(id,position,diameter,lifetime){
     this.position.y += this.heading.y/this.lifetime;
     this.lifeLeft--;
   };
+}
+
+function keyUp(){
+  console.log(arguments);
 }
 
 function windowResized() {
@@ -191,6 +203,14 @@ function update(){
 }
 
 function keyTyped(){
+  if(key == 'w'){
+    oscillatorWaves.next();
+    let w = oscillatorWaves.getCurrent();
+    console.log('switching oscillators to type:', w);
+    for(let o of oscillators){
+      o.setType(w);
+    }
+  }
   if(key == 'u'){
     updating = !updating;
     console.log('updating ' + (updating ? 'resumed' : 'paused'));
