@@ -1,0 +1,25 @@
+{
+  "name": "p5js_lightning_fingers",
+  "version": "1.0.0",
+  "description": "<img src=\"lightning_fingers.png\" width=\"300\">",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "npx http-server"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jonashw/p5js_lightning_fingers.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jonashw/p5js_lightning_fingers/issues"
+  },
+  "homepage": "https://github.com/jonashw/p5js_lightning_fingers#readme"
+}
