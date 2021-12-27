@@ -1,14 +1,15 @@
 new p5(s => {
   /*jshint esversion: 6 */
-  var bg;
-  var playing = false;
+  var bgColors=new CircularArray(['red']);
   var updating = true;
   var drawing = true;
-  var touchColor;
+  let exitingTouchCircles = [];
+  var fingers = [];
   var center = {x:0, y:0};
   let lightningColors = [];
-  let oscillators;
+  let oscillators = [];
   const oscillatorWaves = new CircularArray([ 'triangle', 'sine', 'sawtooth','square' ]);
+  let lightningFactors = new CircularArray([100]);
 
    s.setup = () => {
     s.colorMode(s.HSL, 255, 255, 255, 100);
@@ -17,14 +18,14 @@ new p5(s => {
     s.pixelDensity(1);
     //alert('pixelDensity: ' + pixelDensity());
     //alert('displayDensity: ' + displayDensity());
-    bg = new Background(s, (() => {
+    bgColors = (() => {
       var _hues = [];
       let bgLerpFactor = 8;
       for(var h=0;h<256*bgLerpFactor;h++){
         _hues.push(s.color(h/bgLerpFactor,255,148));
       }
-      return _hues;
-    })());
+      return new CircularArray(_hues);
+    })();
     s.angleMode(s.DEGREES);
     s.createCanvas(s.windowWidth, s.windowHeight);
     s.windowResized();
@@ -74,110 +75,154 @@ new p5(s => {
       osc.amp(0.5);
       return osc;
     });
+
+
+    let dd = s.displayDensity();
+    lightningFactors = new CircularArray([dd * 50, dd*75, dd*100, dd*200]);
+    console.log('setUp ran', s);
   }
+
+  s.draw = () => {
+    if(updating){
+      bgColors.next();
+      for(var i=exitingTouchCircles.length-1; i>=0; i--){
+        let tc = exitingTouchCircles[i];
+        tc.stepToward(center.x, center.y);
+        if(tc.lifeLeft <= 0){
+          exitingTouchCircles.splice(i,1);
+        }
+      }
+    }
+    if(!drawing){
+      return;
+    }
+    s.background(bgColors.getCurrent());
+    let lightningColor = lightningColors[parseInt(s.noise(s.frameCount/30) * lightningColors.length) - 1];
+    if(lightningColor){
+      s.stroke(lightningColor);
+      s.fill(lightningColor);
+    }
+    let dd = s.displayDensity();
+    let d = lightningFactors.getCurrent();
+    let strokeWeight = 5 * dd;
+    fingers.forEach(t => {
+      lightning(s, center.x, center.y, t.x, t.y, d, strokeWeight);
+      s.ellipse(t.x, t.y, d, d);
+    });
+
+    for(let tc of exitingTouchCircles){
+      s.ellipse(tc.position.x, tc.position.y, d/3, d/3);
+      lightning(s, center.x, center.y, tc.position.x, tc.position.y, d/3, strokeWeight/3);
+    }
+
+    s.ellipse(center.x, center.y, d, d);
+  }
+
+  const setFirstNOscillatorsPlaying = n => 
+  {
+    for(var i=0; i<oscillators.length; i++){
+      let osc = oscillators[i];
+      if(n <= i){
+        osc.stop();
+      } else {
+        if(!osc.started){ //starting an already started osc creates an audible 'jerk'
+          osc.start();
+        }
+        osc.amp(0.5/n); //10 osc at 0.5 amp sounds clippy.  let's instead keep volume consistent
+      }
+    }
+  };
 
   s.windowResized = () => {
     s.resizeCanvas(s.windowWidth, s.windowHeight);
     center.x = s.windowWidth/2;
     center.y = s.windowHeight/2;
   };
-  let touchCircles = [];
-  let exitingTouchCircles = [];
 
-  s.touchStarted = () => {
-    for(var i=0; i<s.touches.length; i++){
-      oscillators[i].start();
-    }
+  s.touchStarted = (e) => {
+    setFirstNOscillatorsPlaying(s.touches.length);
     let touch = s.touches[s.touches.length-1];
-    let d = 50 * s.displayDensity();
-    touchCircles.push(new Circle(touch.id, s.createVector(touch.x, touch.y), d, 10));
-    console.log(`touch started (total touches: ${s.touches.length}): `, touchCircles);
+    console.log(`touch started (total touches: ${s.touches.length}): `, touch.id);
+    fingers = s.touches;
     return false; /* This is to prevent pinch-zooming on touch devices: */
   }
-  s.touchEnded = () => {
-    for(var i=s.touches.length; 0<=i && i<oscillators.length; i++){
-      oscillators[i].stop();
-    }
-    let newlyEndedTouchCircles = touchCircles.filter(tc => !s.touches.some(t => tc.containsPoint(t)));
-    let par = partition(touchCircles, tc => s.touches.some(t => tc.containsPoint(t)));
-    touchCircles = par.true;
+
+  s.touchMoved = e => {
+    fingers = s.touches;
+  };
+
+  s.touchEnded = (e) => {
+    fingers = s.touches;
+    setFirstNOscillatorsPlaying(s.touches.length);
+    let completedTouches = Array.from(e.changedTouches).map(getTouchInfo);
+    beginExitOfTouches(completedTouches);
+    console.log('finished touches:',  completedTouches.map(t => t.id).join(', '), completedTouches.map(t => `x:${t.x},y:${t.y}`));
+    return false; /* This is to prevent pinch-zooming on touch devices: */
+  }
+
+  const beginExitOfTouches = completedTouches => {
     let c = s.createVector(center.x, center.y);
-    for(let i=0; i<par.false.length; i++){
-      par.false[i].heading = p5.Vector.sub(c, par.false[i].position);
-      exitingTouchCircles.push(par.false[i]);
+    let newlyEndedTouchCircles = completedTouches.map(touch => {
+      let pos = s.createVector(touch.x, touch.y);
+      let lifetime = 10;
+      return {
+        id: touch.id,
+        position: pos,
+        heading: p5.Vector.sub(c, pos),
+        lifetime,
+        lifeLeft: lifetime,
+        stepToward: function(x, y){
+          this.position.x += this.heading.x/this.lifetime;
+          this.position.y += this.heading.y/this.lifetime;
+          this.lifeLeft--;
+        }
+      };
+    });
+    for(let tc of newlyEndedTouchCircles){
+      exitingTouchCircles.push(tc);
     }
-    console.log('finished touches:', newlyEndedTouchCircles);
-    return false; /* This is to prevent pinch-zooming on touch devices: */
   }
+
   /* I'm not sure if this is strictly necessary: */
   s.mousePressed = () => false;
 
-  function lightning(x1,y1,x2/*optional*/,y2/*optional*/){
-    s.push();
-    let x = x1; 
-    let y = y1;
-    let x_next, y_next;
-    let n = 10;
-    let d = 50 * s.displayDensity();
-    let C = 5 * d / n;
-    let HC = C / 2;
-    let K = 10;
-    s.strokeWeight(5 * s.displayDensity());
-    if(x2 != undefined && y2 != undefined){
-      for(var i=n; i>0; i--){
-        dx = (x - x2) / i;
-        dy = (y - y2) / i;
-        x_next = x - dx + (s.noise(s.frameCount / s.random(n)) * C - HC);
-        y_next = y - dy + (s.noise(s.frameCount / s.random(i)) * C - HC);
-        s.line(x, y, x_next, y_next);
-        x = x_next;
-        y = y_next;
-      }
-      s.line(x, y, x2, y2);
+  const emulateTouchesViaPressedKeys = (pressedKeys) => {
+    let n = pressedKeys.map(parseInt).filter(n => !isNaN(n))[0];
+    if(n === 0){
+      n = 10;
+    }
+    if(isNaN(n)){
+      beginExitOfTouches(fingers);
+      fingers = [];
     } else {
-      s.noStroke();
+      fingers = Array(n).fill().map((_,i) => {
+        let t = i/n * 2 * Math.PI;
+        let r = Math.min(s.width/3, s.height/3);
+        return {
+          x: r*Math.cos(t) + center.x,
+          y: r*Math.sin(t) + center.y
+        };
+      });
+      console.log(fingers);
     }
-    s.pop();
+    setFirstNOscillatorsPlaying(n || 0);
   }
 
-  s.draw = () => {
-    update();
-    if(!drawing) return;
-    bg.draw();
-    let color = lightningColors[parseInt(s.noise(s.frameCount/30) * lightningColors.length) - 1];
-    if(color){
-      s.stroke(color);
-      s.fill(color);
-    }
-    let d = 50 * s.displayDensity();
-    s.touches.forEach(t => {
-      lightning(center.x, center.y, t.x, t.y);
-      s.ellipse(t.x, t.y, d, d);
-    });
-    if(s.mouseIsPressed){
-      lightning(center.x, center.y, s.mouseX, s.mouseY);
-      s.ellipse(s.mouseX, s.mouseY, d, d);
-    }
-    exitingTouchCircles.forEach(tc => {
-      s.ellipse(tc.position.x, tc.position.y, 50, 50);
-      lightning(center.x, center.y, tc.position.x, tc.position.y);
-      tc.stepToward(center.x, center.y);
-    });
-    for(var i=exitingTouchCircles.length-1; i>=0; i--){
-      if(exitingTouchCircles[i].lifeLeft <= 0){
-        exitingTouchCircles.splice(i,1);
-      }
-    }
-    s.ellipse(center.x, center.y, d, d);
+  let pressedKeys = {};
+  s.keyPressed = e => {
+    //console.log('keyPressed',e);
+    pressedKeys[e.key] = true;
+    emulateTouchesViaPressedKeys(Object.keys(pressedKeys));
+  }
+ s.keyReleased = e => {
+    //console.log('keyReleased',e);
+    delete pressedKeys[e.key] 
+    emulateTouchesViaPressedKeys(Object.keys(pressedKeys));
   }
 
-  function update(){
-    if(!updating) return;
-    bg.update();
-  }
-
-  s.keyTyped = () => {
-    if(key == 'w'){
+  s.keyTyped = (e) => {
+    const key = e.key;
+    if(key === 'w'){
       oscillatorWaves.next();
       let w = oscillatorWaves.getCurrent();
       console.log('switching oscillators to type:', w);
@@ -185,27 +230,33 @@ new p5(s => {
         o.setType(w);
       }
     }
-    if(key == 'u'){
+    if(key === 'l'){
+      lightningFactors.next();
+      console.log('switched lightningFactor to:', lightningFactors.getCurrent());
+    }
+    if(key === 'u'){
       updating = !updating;
       console.log('updating ' + (updating ? 'resumed' : 'paused'));
     }
-    if(key == 'd'){
+    if(key === 'd'){
       drawing = !drawing;
       console.log('drawing ' + (drawing ? 'resumed' : 'paused'));
     }
   }
 
-  function partition(array, predicate){
-    let trues = [];
-    let falses = [];
-    for(var i=0; i<array.length; i++){
-      let item = array[i];
-      if(predicate(item)){
-        trues.push(item);
-      } else {
-        falses.push(item);
-      }
-    }
-    return {true: trues, false: falses};
+  function getTouchInfo(touch) {
+    /* p5 uses its own coordinate system, requiring all touches be translated.  
+    ** adapted from https://github.com/processing/p5.js/blob/374acfb44588bfd565c54d61264df197d798d121/src/events/touch.js */
+    const canvas = s._curElement.elt;
+    const rect = canvas.getBoundingClientRect();
+    const sx = canvas.scrollWidth / s.width || 1;
+    const sy = canvas.scrollHeight / s.height || 1;
+    return {
+      x: (touch.clientX - rect.left) / sx,
+      y: (touch.clientY - rect.top) / sy,
+      winX: touch.clientX,
+      winY: touch.clientY,
+      id: touch.identifier
+    };
   }
 },'sketch');
