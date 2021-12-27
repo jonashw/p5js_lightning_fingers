@@ -6,13 +6,25 @@ new p5(s => {
   let exitingTouchCircles = [];
   var fingers = [];
   var center = {x:0, y:0};
-  let lightningColors = [];
+  s.colorMode(s.HSL, 255, 255, 255, 100);
+  const lightningColors = Array(55).fill().map((_,i) => s.color(200 + i,255,100));
+  const randomLightningColor = () => {
+    let i = parseInt(s.noise(s.frameCount/30) * lightningColors.length) - 1;
+    return lightningColors[i];
+  }
+  let monoSynth;
   let oscillators = [];
   const oscillatorWaves = new CircularArray([ 'triangle', 'sine', 'sawtooth','square' ]);
   let lightningFactors = new CircularArray([100]);
 
-   s.setup = () => {
-    s.colorMode(s.HSL, 255, 255, 255, 100);
+  s.windowResized = () => {
+    s.resizeCanvas(s.windowWidth, s.windowHeight);
+    center.x = s.windowWidth/2;
+    center.y = s.windowHeight/2;
+  };
+
+  s.setup = () => {
+    monoSynth = new p5.MonoSynth();
     //greatly impraove performance with a pixelDensity less than 1:
     //pixelDensity(0.125);
     s.pixelDensity(1);
@@ -29,7 +41,6 @@ new p5(s => {
     s.angleMode(s.DEGREES);
     s.createCanvas(s.windowWidth, s.windowHeight);
     s.windowResized();
-    lightningColors = Array(55).fill().map((_,i) => s.color(200 + i,255,100));
     /*
     https://npm.runkit.com/@tonaljs/chord:
     var note = require("@tonaljs/note")
@@ -76,7 +87,6 @@ new p5(s => {
       return osc;
     });
 
-
     let dd = s.displayDensity();
     lightningFactors = new CircularArray([dd * 50, dd*75, dd*100, dd*200]);
     console.log('setUp ran', s);
@@ -92,12 +102,14 @@ new p5(s => {
           exitingTouchCircles.splice(i,1);
         }
       }
+
     }
+    setFirstNOscillatorsPlaying(fingers.length + exitingTouchCircles.length);
     if(!drawing){
       return;
     }
     s.background(bgColors.getCurrent());
-    let lightningColor = lightningColors[parseInt(s.noise(s.frameCount/30) * lightningColors.length) - 1];
+    let lightningColor = randomLightningColor();
     if(lightningColor){
       s.stroke(lightningColor);
       s.fill(lightningColor);
@@ -133,17 +145,22 @@ new p5(s => {
     }
   };
 
-  s.windowResized = () => {
-    s.resizeCanvas(s.windowWidth, s.windowHeight);
-    center.x = s.windowWidth/2;
-    center.y = s.windowHeight/2;
-  };
+  const circleContainsPoint = (center, radius, point) =>
+    s.dist(center.x, center.y, point.x, point.y) <= radius;
 
   s.touchStarted = (e) => {
-    setFirstNOscillatorsPlaying(s.touches.length);
     let touch = s.touches[s.touches.length-1];
-    console.log(`touch started (total touches: ${s.touches.length}): `, touch.id);
+    if(circleContainsPoint(center, lightningFactors.getCurrent(), touch)){
+      let time = 0;
+      let dur = 1/6;
+      let vel = 0.25;
+      let note = updating ? 'C4' : 'G4';
+      monoSynth.play(note, vel, time, dur);
+      updating = !updating;
+      return;
+    }
     fingers = s.touches;
+    console.log(`touch started (total touches: ${s.touches.length}): `, touch.id);
     return false; /* This is to prevent pinch-zooming on touch devices: */
   }
 
@@ -153,9 +170,9 @@ new p5(s => {
 
   s.touchEnded = (e) => {
     fingers = s.touches;
-    setFirstNOscillatorsPlaying(s.touches.length);
     let completedTouches = Array.from(e.changedTouches).map(getTouchInfo);
-    beginExitOfTouches(completedTouches);
+    let touchesToExit = completedTouches.filter(t => !circleContainsPoint(center, lightningFactors.getCurrent(), t));
+    beginExitOfTouches(touchesToExit);
     console.log('finished touches:',  completedTouches.map(t => t.id).join(', '), completedTouches.map(t => `x:${t.x},y:${t.y}`));
     return false; /* This is to prevent pinch-zooming on touch devices: */
   }
