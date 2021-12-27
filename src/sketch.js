@@ -94,7 +94,6 @@ new p5(s => {
 
   s.draw = () => {
     if(updating){
-      bgColors.next();
       for(var i=exitingTouchCircles.length-1; i>=0; i--){
         let tc = exitingTouchCircles[i];
         tc.stepToward(center.x, center.y);
@@ -109,6 +108,7 @@ new p5(s => {
       return;
     }
     s.background(bgColors.getCurrent());
+    bgColors.next();
     let lightningColor = randomLightningColor();
     if(lightningColor){
       s.stroke(lightningColor);
@@ -127,7 +127,8 @@ new p5(s => {
       lightning(s, center.x, center.y, tc.position.x, tc.position.y, d/3, strokeWeight/3);
     }
 
-    s.ellipse(center.x, center.y, d, d);
+    let centerD = updating ? d : d * 1.5;
+    s.ellipse(center.x, center.y, centerD, centerD);
   }
 
   const setFirstNOscillatorsPlaying = n => 
@@ -189,6 +190,7 @@ new p5(s => {
 
   s.touchMoved = e => {
     fingers = s.touches;
+    return false; /* This is to help prevent scrolling on touch devices. */
   };
 
   s.touchEnded = (e) => {
