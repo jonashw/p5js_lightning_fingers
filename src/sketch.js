@@ -148,14 +148,37 @@ new p5(s => {
   const circleContainsPoint = (center, radius, point) =>
     s.dist(center.x, center.y, point.x, point.y) <= radius;
 
-  s.touchStarted = (e) => {
-    let touch = s.touches[s.touches.length-1];
-    if(circleContainsPoint(center, lightningFactors.getCurrent(), touch)){
+  s.mousePressed = () => {
+    /* I'm not sure if this is strictly necessary: */
+    beginExitOfTouches(fingers);
+    let mouse = {x: s.mouseX, y: s.mouseY};
+    if(circleContainsPoint(center, lightningFactors.getCurrent()/2, mouse)){
+      playUpdateToggleSound(updating);
+      updating = !updating;
+      return;
+    }
+    fingers = [mouse];
+    return false;
+  };
+
+  s.mouseReleased = () => {
+    beginExitOfTouches(fingers);
+    fingers = [];
+    return false;
+  }
+  
+  const playUpdateToggleSound = updating => {
       let time = 0;
       let dur = 1/6;
       let vel = 0.25;
       let note = updating ? 'C4' : 'G4';
       monoSynth.play(note, vel, time, dur);
+  };
+
+  s.touchStarted = (e) => {
+    let touch = s.touches[s.touches.length-1];
+    if(circleContainsPoint(center, lightningFactors.getCurrent()/2, touch)){
+      playUpdateToggleSound(updating);
       updating = !updating;
       return;
     }
@@ -199,9 +222,6 @@ new p5(s => {
       exitingTouchCircles.push(tc);
     }
   }
-
-  /* I'm not sure if this is strictly necessary: */
-  s.mousePressed = () => false;
 
   const emulateTouchesViaPressedKeys = (pressedKeys) => {
     let n = pressedKeys.map(parseInt).filter(n => !isNaN(n))[0];
