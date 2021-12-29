@@ -12,6 +12,8 @@ new p5(s => {
     let i = parseInt(s.noise(s.frameCount/30) * lightningColors.length) - 1;
     return lightningColors[i];
   }
+  let circleDiameter = 10;
+  let centerDiameter = 10;
   let monoSynth;
   let oscillators = [];
   const oscillatorWaves = new CircularArray([ 'triangle', 'sine', 'sawtooth','square' ]);
@@ -93,6 +95,8 @@ new p5(s => {
   }
 
   s.draw = () => {
+    circleDiameter = lightningFactors.getCurrent();
+    centerDiameter = updating ? circleDiameter : circleDiameter * (1.5 + exitingTouchCircles.length/10);
     if(updating){
       for(var i=exitingTouchCircles.length-1; i>=0; i--){
         let tc = exitingTouchCircles[i];
@@ -119,7 +123,7 @@ new p5(s => {
     let strokeWeight = 5 * dd;
     fingers.forEach(t => {
       lightning(s, center.x, center.y, t.x, t.y, d, strokeWeight);
-      s.ellipse(t.x, t.y, d, d);
+      s.ellipse(t.x, t.y, circleDiameter, circleDiameter);
     });
 
     for(let tc of exitingTouchCircles){
@@ -127,8 +131,7 @@ new p5(s => {
       lightning(s, center.x, center.y, tc.position.x, tc.position.y, d/3, strokeWeight/3);
     }
 
-    let centerD = updating ? d : d * 1.5;
-    s.ellipse(center.x, center.y, centerD, centerD);
+    s.ellipse(center.x, center.y, centerDiameter, centerDiameter);
   }
 
   const setFirstNOscillatorsPlaying = n => 
@@ -178,7 +181,7 @@ new p5(s => {
 
   s.touchStarted = (e) => {
     let touch = s.touches[s.touches.length-1];
-    if(circleContainsPoint(center, lightningFactors.getCurrent()/2, touch)){
+    if(circleContainsPoint(center, centerDiameter/2, touch)){
       playUpdateToggleSound(updating);
       updating = !updating;
       return;
