@@ -362,11 +362,13 @@ button.on { border-color: var(--hot); color: var(--hot); }
    "DEFAULT": 0,
    "VALUES": [
     0,
-    1
+    1,
+    2
    ],
    "LABELS": [
     "Music + zaps",
-    "Zaps only"
+    "Zaps only",
+    "Music only"
    ]
   },
   {
@@ -1023,10 +1025,12 @@ void main() {
 
   // ---------- Sound ----------
   // Two buses: "music" (finger voices, the hum of the chord, Tesla zaps) and the zaps (crackle, electric buzz,
-  // snaps, thunder). The Sound knob, or #zaps in the address, turns the music bus off and leaves only the zaps.
+  // snaps, thunder). The Sound knob picks Music + zaps, Zaps only (#zaps) or Music only (#music).
   if (/zaps/.test(location.hash)) val.sound = 1;
+  if (/music/.test(location.hash)) val.sound = 2;
   const musicOn = () => (val.sound | 0) !== 1;
-  let ac = null, bus, music, master, noiseBuf, drone, crackle, hum;
+  const zapsOn = () => (val.sound | 0) !== 2;
+  let ac = null, bus, music, zapBus, master, noiseBuf, drone, crackle, hum;
   function audio() {
     if (ac) { if (ac.state === 'suspended') ac.resume(); return; }
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
@@ -1036,6 +1040,7 @@ void main() {
     master = ac.createGain(); master.gain.value = 0.8 * settings.volume;
     bus = ac.createGain(); bus.connect(comp); comp.connect(master); master.connect(ac.destination);
     music = ac.createGain(); music.gain.value = musicOn() ? 1 : 0; music.connect(bus);
+    zapBus = ac.createGain(); zapBus.gain.value = zapsOn() ? 1 : 0; zapBus.connect(bus);
     noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
     const ch = noiseBuf.getChannelData(0); for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
     // Low hum of the globe: root and fifth, louder with more fingers.
@@ -1046,12 +1051,12 @@ void main() {
     const n = ac.createBufferSource(); n.buffer = noiseBuf; n.loop = true;
     const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 3200; bp.Q.value = 0.7;
     crackle = ac.createGain(); crackle.gain.value = 0;
-    n.connect(bp); bp.connect(crackle); crackle.connect(bus); n.start();
+    n.connect(bp); bp.connect(crackle); crackle.connect(zapBus); n.start();
     // Electric buzz: a mains-like 60 Hz sawtooth, band-passed so it sizzles instead of booming.
     hum = { o: ac.createOscillator(), o2: ac.createOscillator(), f: ac.createBiquadFilter(), g: ac.createGain() };
     hum.o.type = 'sawtooth'; hum.o.frequency.value = 60; hum.o2.type = 'square'; hum.o2.frequency.value = 120.7;
     hum.f.type = 'bandpass'; hum.f.frequency.value = 420; hum.f.Q.value = 1.2; hum.g.gain.value = 0;
-    hum.o.connect(hum.f); hum.o2.connect(hum.f); hum.f.connect(hum.g); hum.g.connect(bus); hum.o.start(); hum.o2.start();
+    hum.o.connect(hum.f); hum.o2.connect(hum.f); hum.f.connect(hum.g); hum.g.connect(zapBus); hum.o.start(); hum.o2.start();
   }
   // A voice: soft triangle plus a quiet detuned saw, low-passed, with a fast tremolo (the tingle).
   function makeVoice(midi) {
@@ -1102,7 +1107,7 @@ void main() {
     const t = ac.currentTime, n = ac.createBufferSource(), hp = ac.createBiquadFilter(), g = ac.createGain();
     n.buffer = noiseBuf; hp.type = 'highpass'; hp.frequency.value = 1800;
     g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.35 * vel, t + 0.002); g.gain.setTargetAtTime(0, t + 0.004, 0.025);
-    n.connect(hp); hp.connect(g); g.connect(bus); n.start(t, Math.random() * 0.5); n.stop(t + 0.3);
+    n.connect(hp); hp.connect(g); g.connect(zapBus); n.start(t, Math.random() * 0.5); n.stop(t + 0.3);
   }
   // Thunder for a shake: a low noise boom.
   function thunder() {
@@ -1110,7 +1115,7 @@ void main() {
     const t = ac.currentTime, n = ac.createBufferSource(), lp = ac.createBiquadFilter(), g = ac.createGain();
     n.buffer = noiseBuf; n.loop = true; lp.type = 'lowpass'; lp.frequency.value = 180;
     g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.9, t + 0.04); g.gain.setTargetAtTime(0, t + 0.1, 0.5);
-    n.connect(lp); lp.connect(g); g.connect(bus); n.start(t); n.stop(t + 3);
+    n.connect(lp); lp.connect(g); g.connect(zapBus); n.start(t); n.stop(t + 3);
   }
 
   // ---------- Haptics: a buzz that comes faster and stronger with more fingers ----------
@@ -1403,6 +1408,7 @@ void main() {
       drone.o.forEach((o, k) => o.frequency.setTargetAtTime(mtof(33 + CHORDS[chordI].root + k * 7), t, 0.3));
       const zapsOnly = !musicOn();
       music.gain.setTargetAtTime(zapsOnly ? 0 : 1, t, 0.05);
+      zapBus.gain.setTargetAtTime(zapsOn() ? 1 : 0, t, 0.05);
       // Crackle: a snap for every kick you can see ripple down a bolt, plus a few in between.
       if (kicked > 0 || (n > 0 && Math.random() < dt * (3 + 2 * n))) {
         const loud = (0.02 + 0.012 * Math.min(n, 6) * Math.random()) * (zapsOnly ? 1.8 : 1) * (1 + 0.3 * Math.min(kicked, 3));
@@ -1578,12 +1584,13 @@ void main() {
   dial('Crackle', 'crackle', 0.2, 3, v => v.toFixed(1) + '×');
   dial('Wire wiggle', 'wire', 0.3, 2.2, v => v.toFixed(1) + '×');
   grid = switchRow;
-  selector('Sound', 'sound', ['Music', 'Zaps only']);
+  selector('Sound', 'sound', ['Music + zaps', 'Zaps only', 'Music only']);
   selector('Chord signs', 'indicator', ['Electrode', 'Lamps', 'Both']);
 
   // Saved settings first, then a hash in the address for this visit only.
   applySettings();
   if (/zaps/.test(location.hash)) val.sound = 1;
+  if (/music/.test(location.hash)) val.sound = 2;
   if (/lamps/.test(location.hash)) val.indicator = /both/.test(location.hash) ? 2 : 1;
 
   // ---------- Buttons ----------
@@ -1695,6 +1702,7 @@ void main() {
   requestAnimationFrame(draw);
 })();
 </script>
+
 
 </body>
 </html>
