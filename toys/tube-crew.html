@@ -1,0 +1,1415 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{margin:0;height:100%;background:#000}</style>
+</head>
+<body>
+<title>Tube Crew</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+/* Layout: one full-bleed WebGL stage; a floating title chip, two corner buttons, and a knob drawer that slides up from the bottom. Deliberately single-theme: it is a dark dance floor. */
+:root {
+  --floor: #07060c;
+  --glass: rgba(18, 14, 30, 0.78);
+  --line: rgba(255, 255, 255, 0.14);
+  --ink: #f4f1ff;
+  --dim: #b5aecb;
+  --hot: #ff3fb4;
+  --display: "Bungee", "Arial Black", Impact, sans-serif;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--floor);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 15px;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+#stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
+.top {
+  position: fixed; left: 0; right: 0; top: 0;
+  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  pointer-events: none;
+}
+.chip { pointer-events: auto; background: var(--glass); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.chip h1 { margin: 0; font-family: var(--display); font-size: 18px; font-weight: 400; letter-spacing: 0.02em; line-height: 1.1; }
+.chip p { margin: 2px 0 0; font-size: 12px; color: var(--dim); }
+.btns { display: flex; gap: 8px; pointer-events: auto; }
+button {
+  font: 700 13px/1 var(--body); color: var(--ink);
+  background: var(--glass); border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 12px; min-height: 40px; cursor: pointer;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+button:focus-visible, input:focus-visible { outline: 2px solid var(--hot); outline-offset: 2px; }
+button.on { border-color: var(--hot); color: var(--hot); }
+.drawer {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  padding-top: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: var(--glass); border-top: 1px solid var(--line);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  max-height: 55%; overflow-y: auto;
+}
+.drawer-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.drawer-head h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 14px; letter-spacing: 0.06em; }
+.drawer-head span { font-size: 12px; color: var(--dim); }
+.knobs { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 18px; max-width: 900px; }
+.knob { display: grid; grid-template-columns: 92px 1fr auto; align-items: center; gap: 10px; min-width: 0; }
+.knob label { font-size: 13px; font-weight: 700; }
+.knob output { font: 12px var(--mono); color: var(--dim); min-width: 3.5em; text-align: right; font-variant-numeric: tabular-nums; }
+.knob input[type=range] { width: 100%; accent-color: var(--hot); min-width: 0; }.knob input[type=color] { width: 44px; height: 30px; border: 1px solid var(--line); border-radius: 8px; background: none; padding: 0; }
+.knob .note { font-size: 12px; color: var(--dim); grid-column: 2 / 4; }
+.tag { display: inline-block; font: 10px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 6px; border-radius: 6px; border: 1px solid var(--line); color: var(--dim); margin-left: 6px; vertical-align: middle; }
+.tag.music { border-color: var(--hot); color: var(--hot); }
+.beat { display: flex; align-items: center; gap: 10px; grid-column: 1 / -1; padding-top: 4px; border-top: 1px solid var(--line); margin-top: 4px; }
+.beat .bpm { font: 700 20px var(--mono); font-variant-numeric: tabular-nums; min-width: 3ch; }
+.beat .lamp { width: 12px; height: 12px; border-radius: 50%; background: var(--hot); opacity: 0.2; }
+.beat small { color: var(--dim); font-size: 12px; }
+.sheet {
+  position: fixed; inset: 0; display: grid; place-items: center;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  background: rgba(4, 3, 8, 0.72);
+}
+.sheet .card { background: #120e1e; border: 1px solid var(--line); border-radius: 14px; width: min(760px, 100%); max-height: 100%; display: flex; flex-direction: column; min-width: 0; }
+.sheet header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.sheet header h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 15px; }
+.sheet .explain { margin: 0; padding: 10px 14px 0; color: var(--dim); font-size: 13px; max-width: 65ch; }
+.sheet pre { margin: 0; padding: 12px 14px 16px; overflow: auto; font: 12px/1.5 var(--mono); color: var(--ink); white-space: pre; }
+.hint {
+  position: fixed; left: 50%; top: 42%; transform: translate(-50%, -50%);
+  font-family: var(--display); font-size: 15px; letter-spacing: 0.04em; text-align: center;
+  color: var(--ink); text-shadow: 0 0 12px rgba(255, 63, 180, 0.8);
+  pointer-events: none; transition: opacity 0.6s; width: min(90%, 420px);
+}
+.err { position: fixed; inset: auto 16px 50% 16px; background: #2a0c18; border: 1px solid var(--hot); border-radius: 12px; padding: 14px; font-size: 14px; }
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { .hint { transition: none; } }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; grid-column: 2 / 4; }
+.seg button { min-height: 34px; padding: 7px 10px; font-size: 12px; }
+.knob.wide { grid-column: 1 / -1; }
+.knob .act { grid-column: 2 / 4; justify-self: start; }
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { .hint { transition: none; } }
+</style>
+
+<canvas id="stage" aria-label="Tube Crew: a crowd of inflatable tube dancers, the kind that flail outside a car lot on sale day, dancing to the beat in a dry field, a car lot, a night lot or a dreamy pastel space. Tap a dancer to puff it, shake the phone to pump air into all of them, drag to move the camera."></canvas>
+
+<div class="top">
+  <div class="chip">
+    <h1>Tube Crew</h1>
+    <p>An ISF shader toy for House Party</p>
+  </div>
+  <div class="btns">
+    <button id="toggleKnobs" class="on" aria-expanded="true" aria-controls="drawer">Knobs</button>
+    <button id="showSource" aria-haspopup="dialog">ISF file</button>
+  </div>
+</div>
+
+<div class="hint" id="hint">Tap a dancer to puff it.<br>Shake the phone. Drag to look around</div>
+
+<section class="drawer" id="drawer" aria-label="Knobs">
+  <div class="drawer-head">
+    <h2>KNOBS</h2>
+    <span>Built automatically from the ISF file's header</span>
+  </div>
+  <div class="knobs" id="knobs"></div>
+</section>
+
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden>
+  <div class="card">
+    <header>
+      <h2 id="sheetTitle">tube-crew.fs</h2>
+      <div class="btns"><button id="copySrc">Copy</button><button id="closeSheet">Close</button></div>
+    </header>
+    <p class="explain">This is the whole visual: a JSON header listing its knobs, then the shader. The page simulates every dancer as a chain of fabric tube 120 times a second: air pressure pulls each section straight, gravity folds it over, gusts and turbulence make the arms flail, and the tassels flutter. The air comes on the beat (Groove puffs every beat, Wave rolls across the crowd once a bar, Flop collapses half of them and whips them back up, Chaos, and Sync where they all move as one), plus whatever you add by tapping, shaking the phone, a MIDI keyboard or the microphone. The chains are packed into a small image, one row per dancer, and the shader traces each tube exactly as a string of capsules with a face, tassels and a blower box, lit with soft shadows on the ground. Cameras cut on the bar in Auto. Every 16 bars a flying saucer may drift over and pull them skyward with its beam. On the party screen, House Party would turn the same knobs from the music instead of your fingers.</p>
+    <pre id="srcView"></pre>
+  </div>
+</div>
+
+<script id="isf-source" type="x-shader/x-fragment">/*{
+ "DESCRIPTION": "Tube Crew: a field of inflatable tube dancers, the kind that flail outside a car lot on sale day. Every dancer is a chain of fabric tube the page simulates (air pressure straightens it, gravity folds it, gusts and arms flail), and the shader traces them as 3D tubes with faces, tassel hair and a blower box at the foot. The air comes on the beat: grooves, a stadium wave across the crowd, flops where half of them collapse and whip back up, chaos, or all in sync. Shake the phone, tap a dancer, play a MIDI keyboard or let the mic hear the room to give them more air. Choose how many, how they stand (field, row, aisle, ring, grid, arrow, spiral) and where the camera is. Now and then a flying saucer drifts over and pulls them skyward.",
+ "CREDIT": "Original House Party toy",
+ "ISFVSN": "2",
+ "CATEGORIES": ["Generator", "House Party toy"],
+ "INPUTS": [
+  {"NAME": "count", "LABEL": "Dancers", "TYPE": "long", "VALUES": [1, 3, 6, 9, 12, 16, 20, 24], "LABELS": ["1", "3", "6", "9", "12", "16", "20", "24"], "DEFAULT": 12},
+  {"NAME": "layout", "LABEL": "Layout", "TYPE": "long", "VALUES": [0, 1, 2, 3, 4, 5, 6], "LABELS": ["Field", "Row", "Aisle", "Ring", "Grid", "Arrow", "Spiral"], "DEFAULT": 0},
+  {"NAME": "dance", "LABEL": "Dance", "TYPE": "long", "VALUES": [0, 1, 2, 3, 4, 5], "LABELS": ["Auto", "Groove", "Wave", "Flop", "Chaos", "Sync"], "DEFAULT": 0},
+  {"NAME": "cam", "LABEL": "Camera", "TYPE": "long", "VALUES": [0, 1, 2, 3, 4, 5, 6, 7], "LABELS": ["Auto", "Field", "Street", "Worm's eye", "Drone", "Overhead", "Dolly", "Close-up"], "DEFAULT": 0},
+  {"NAME": "autoEvery", "LABEL": "Auto camera cuts every", "TYPE": "long", "VALUES": [1, 2, 4, 8], "LABELS": ["1 bar", "2 bars", "4 bars", "8 bars"], "DEFAULT": 4},
+  {"NAME": "world", "LABEL": "Place", "TYPE": "long", "VALUES": [0, 1, 2, 3], "LABELS": ["Ranch", "Car lot", "Night lot", "Dreamy"], "DEFAULT": 0},
+  {"NAME": "palette", "LABEL": "Colours", "TYPE": "long", "VALUES": [0, 1, 2, 3, 4], "LABELS": ["Lot mix", "Warm", "Cool", "Neon", "All red"], "DEFAULT": 0},
+  {"NAME": "visitor", "LABEL": "Saucer visits", "TYPE": "long", "VALUES": [0, 1], "LABELS": ["Off", "On"], "DEFAULT": 1},
+  {"NAME": "energy", "LABEL": "Energy", "TYPE": "float", "MIN": 0.0, "MAX": 1.5, "DEFAULT": 1.0},
+  {"NAME": "wind", "LABEL": "Wind", "TYPE": "float", "MIN": 0.0, "MAX": 1.0, "DEFAULT": 0.25},
+  {"NAME": "rig", "TYPE": "image"},
+  {"NAME": "camX", "TYPE": "float", "DEFAULT": 0.0, "HOUSEPARTY_HIDDEN": true},
+  {"NAME": "camY", "TYPE": "float", "DEFAULT": 2.0, "HOUSEPARTY_HIDDEN": true},
+  {"NAME": "camZ", "TYPE": "float", "DEFAULT": -30.0, "HOUSEPARTY_HIDDEN": true},
+  {"NAME": "tgtX", "TYPE": "float", "DEFAULT": 0.0, "HOUSEPARTY_HIDDEN": true},
+  {"NAME": "tgtY", "TYPE": "float", "DEFAULT": 2.5, "HOUSEPARTY_HIDDEN": true},
+  {"NAME": "tgtZ", "TYPE": "float", "DEFAULT": 0.0, "HOUSEPARTY_HIDDEN": true},
+  {"NAME": "fov", "TYPE": "float", "DEFAULT": 0.8, "HOUSEPARTY_HIDDEN": true},
+  {"NAME": "sauX", "TYPE": "float", "DEFAULT": 0.0, "HOUSEPARTY_HIDDEN": true},
+  {"NAME": "sauY", "TYPE": "float", "DEFAULT": 40.0, "HOUSEPARTY_HIDDEN": true},
+  {"NAME": "sauZ", "TYPE": "float", "DEFAULT": 0.0, "HOUSEPARTY_HIDDEN": true},
+  {"NAME": "sauOn", "TYPE": "float", "DEFAULT": 0.0, "HOUSEPARTY_HIDDEN": true},
+  {"NAME": "beam", "TYPE": "float", "DEFAULT": 0.0, "HOUSEPARTY_HIDDEN": true}
+ ]
+}*/
+
+// The "rig" image holds every dancer, one row each (58 texels wide, 24 rows):
+//   nodes 0-9 body (base to head), 10-13 left arm, 14-17 right arm, 18-25 tassel tips, 27 bounding sphere;
+//   each node is two texels: x and y, then z and radius, as 16-bit numbers.
+//   texel 52 body colour + air pressure, 53 facing (x, z) + mouth + spare, 56 tassel colour.
+const float COLS = 58.0;
+const float SEG = 0.66;
+const float BR = 0.42;
+
+float d16(vec2 hl) { return (floor(hl.x * 255.0 + 0.5) * 256.0 + floor(hl.y * 255.0 + 0.5)) / 65535.0; }
+vec4 TX(int m, float c) { return IMG_NORM_PIXEL(rig, vec2((c + 0.5) / COLS, (float(m) + 0.5) / 24.0)); }
+vec4 node(int m, float i) {
+  vec4 a = TX(m, i * 2.0), b = TX(m, i * 2.0 + 1.0);
+  return vec4(-60.0 + 120.0 * d16(a.xy), -2.0 + 32.0 * d16(a.zw), -60.0 + 120.0 * d16(b.xy), 8.0 * d16(b.zw));
+}
+
+float hash(vec2 p) { p = fract(p * vec2(0.1031, 0.1030)); p += dot(p, p.yx + 33.33); return fract((p.x + p.y) * p.x); }
+float vnoise(vec2 p) {
+  vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+float fbm(vec2 p) { return 0.5 * vnoise(p) + 0.3 * vnoise(p * 2.13 + 7.1) + 0.2 * vnoise(p * 4.37 + 3.3); }
+
+// Ray against a capsule (exact).
+float capI(vec3 ro, vec3 rd, vec3 pa, vec3 pb, float r) {
+  vec3 ba = pb - pa, oa = ro - pa;
+  float baba = dot(ba, ba), bard = dot(ba, rd), baoa = dot(ba, oa), rdoa = dot(rd, oa), oaoa = dot(oa, oa);
+  float a = baba - bard * bard, b = baba * rdoa - baoa * bard, c = baba * oaoa - baoa * baoa - r * r * baba;
+  float h = b * b - a * c;
+  if (h >= 0.0) {
+    float t = (-b - sqrt(h)) / a;
+    float y = baoa + t * bard;
+    if (y > 0.0 && y < baba) return t;
+    vec3 oc = (y <= 0.0) ? oa : ro - pb;
+    b = dot(rd, oc); c = dot(oc, oc) - r * r; h = b * b - c;
+    if (h > 0.0) return -b - sqrt(h);
+  }
+  return -1.0;
+}
+// Ray against an axis-aligned box; returns distance and writes the normal.
+float boxI(vec3 ro, vec3 rd, vec3 c, vec3 hs, out vec3 nor) {
+  vec3 m = 1.0 / rd, n = m * (ro - c), k = abs(m) * hs;
+  vec3 t1 = -n - k, t2 = -n + k;
+  float tN = max(max(t1.x, t1.y), t1.z), tF = min(min(t2.x, t2.y), t2.z);
+  nor = vec3(0.0);
+  if (tN > tF || tF < 0.0) return -1.0;
+  nor = -sign(rd) * step(t1.yzx, t1.xyz) * step(t1.zxy, t1.xyz);
+  return tN;
+}
+// Closest distance between a ray (t >= 0) and a segment.
+float segRay(vec3 ro, vec3 rd, vec3 a, vec3 b) {
+  vec3 d2 = b - a, r = ro - a;
+  float e = dot(d2, d2), f = dot(d2, r), c = dot(rd, r), bb = dot(rd, d2);
+  float den = e - bb * bb;
+  float s = den > 1e-5 ? (bb * f - c * e) / den : 0.0;
+  s = max(s, 0.0);
+  float t = clamp((bb * s + f) / e, 0.0, 1.0);
+  s = max(0.0, t * bb - c);
+  return length(ro + rd * s - (a + d2 * t));
+}
+
+vec3 SUN; vec3 SUNC; vec3 AMB; vec3 BOUNCE; vec3 FOGC; float FOGD;
+void setWorld() {
+  if (world == 0) { SUN = normalize(vec3(-0.45, 0.7, -0.55)); SUNC = vec3(1.05, 0.98, 0.88); AMB = vec3(0.5, 0.55, 0.62); BOUNCE = vec3(0.35, 0.3, 0.2); FOGC = vec3(0.8, 0.8, 0.79); FOGD = 0.012; }
+  else if (world == 1) { SUN = normalize(vec3(-0.55, 0.8, -0.3)); SUNC = vec3(1.25, 1.18, 1.05); AMB = vec3(0.42, 0.52, 0.7); BOUNCE = vec3(0.18, 0.18, 0.2); FOGC = vec3(0.72, 0.82, 0.95); FOGD = 0.006; }
+  else if (world == 2) { SUN = normalize(vec3(0.3, 0.6, 0.5)); SUNC = vec3(0.2, 0.24, 0.38); AMB = vec3(0.08, 0.09, 0.16); BOUNCE = vec3(0.03, 0.03, 0.05); FOGC = vec3(0.03, 0.035, 0.07); FOGD = 0.02; }
+  else { SUN = normalize(vec3(0.25, 1.0, -0.4)); SUNC = vec3(0.95, 0.9, 0.92); AMB = vec3(0.62, 0.55, 0.7); BOUNCE = vec3(0.5, 0.42, 0.45); FOGC = vec3(0.98, 0.84, 0.82); FOGD = 0.02; }
+}
+
+vec3 sky(vec3 rd) {
+  float az = atan(rd.x, rd.z);
+  vec2 ring = vec2(cos(az), sin(az));
+  float e = rd.y;
+  if (world == 0) {
+    vec3 c = mix(vec3(0.86, 0.86, 0.84), vec3(0.62, 0.72, 0.85), smoothstep(0.0, 0.5, e));
+    float hill = 0.03 + 0.06 * fbm(ring * 2.2 + 3.0) + 0.02 * vnoise(ring * 9.0);
+    if (e < hill) {
+      float bush = smoothstep(0.55, 0.75, fbm(vec2(az * 40.0, e * 90.0)));
+      vec3 h = mix(vec3(0.62, 0.55, 0.42), vec3(0.3, 0.33, 0.24), bush * 0.8);
+      h = mix(h, vec3(0.78, 0.78, 0.76), 0.35 * smoothstep(0.08, 0.0, e));
+      c = mix(h, c, smoothstep(hill - 0.004, hill, e));
+    }
+    return c;
+  }
+  if (world == 1) {
+    vec3 c = mix(vec3(0.78, 0.86, 0.95), vec3(0.25, 0.48, 0.85), smoothstep(0.0, 0.6, e));
+    c += vec3(1.0, 0.9, 0.7) * pow(max(dot(rd, SUN), 0.0), 60.0) * 0.6;
+    float bx = floor(az * 6.0);
+    float bh = 0.02 + 0.05 * hash(vec2(bx, 3.0)) * step(0.35, hash(vec2(bx, 9.0)));
+    float pole = step(fract(az * 14.0), 0.012) * step(e, 0.11);
+    if (e < bh || pole > 0.0) c = mix(vec3(0.55, 0.6, 0.68), vec3(0.75, 0.78, 0.82), smoothstep(0.0, 0.06, e));
+    return c;
+  }
+  if (world == 2) {
+    vec3 c = mix(vec3(0.09, 0.07, 0.12), vec3(0.01, 0.015, 0.04), smoothstep(0.0, 0.4, e));
+    vec2 sp = vec2(az * 140.0, e * 140.0);
+    float st = step(0.97, hash(floor(sp))) * smoothstep(0.3, 0.0, length(fract(sp) - 0.5)) * smoothstep(0.02, 0.2, e) * (0.6 + 0.4 * sin(TIME * 3.0 + hash(floor(sp) + 2.0) * 30.0));
+    c += vec3(st);
+    float bx = floor(az * 9.0);
+    float bh = 0.015 + 0.04 * hash(vec2(bx, 4.0));
+    if (e < bh) {
+      c = vec3(0.015, 0.015, 0.025);
+      vec2 w = vec2(az * 220.0, e * 400.0);
+      c += vec3(1.0, 0.75, 0.4) * 0.5 * step(0.8, hash(floor(w))) * step(0.5, fract(w.x)) * step(0.5, fract(w.y));
+    }
+    c += vec3(0.25, 0.12, 0.08) * exp(-abs(e) * 18.0) * 0.6;
+    return c;
+  }
+  vec3 c = mix(vec3(1.0, 0.85, 0.8), vec3(0.72, 0.7, 0.95), smoothstep(-0.05, 0.6, e));
+  c += vec3(1.0, 0.95, 0.85) * smoothstep(0.995, 0.998, dot(rd, normalize(vec3(0.2, 0.25, 1.0)))) * 0.4;
+  return c;
+}
+
+// Soft shadow from the dancers (and the saucer) on a ground point.
+float shadow(vec3 p, vec3 L) {
+  float res = 1.0;
+  for (int m = 0; m < 24; m++) {
+    if (m >= count) break;
+    vec4 bc = node(m, 27.0);
+    vec3 oc = bc.xyz - p;
+    float tp = dot(oc, L);
+    if (tp < 0.0 || length(oc - L * tp) > bc.w) continue;
+    vec4 A = node(m, 0.0);
+    for (int i = 0; i < 9; i++) {
+      vec4 B = node(m, float(i + 1));
+      float d = segRay(p, L, A.xyz, B.xyz);
+      res = min(res, clamp((d - A.w * 0.8) / 0.35, 0.0, 1.0));
+      A = B;
+    }
+    for (int k = 0; k < 2; k++) {
+      float b0 = 10.0 + float(k) * 4.0;
+      vec4 C = node(m, b0);
+      for (int j = 0; j < 3; j++) {
+        vec4 D = node(m, b0 + float(j + 1));
+        res = min(res, clamp((segRay(p, L, C.xyz, D.xyz) - 0.15) / 0.3, 0.0, 1.0));
+        C = D;
+      }
+    }
+  }
+  if (sauOn > 0.01) {
+    vec3 S = vec3(sauX, sauY, sauZ);
+    float tp = dot(S - p, L);
+    vec3 q = p + L * tp - S;
+    float d = length(q / vec3(6.0, 1.0, 6.0));
+    res = min(res, mix(1.0, smoothstep(0.7, 1.1, d), sauOn));
+  }
+  return 0.35 + 0.65 * res;
+}
+
+vec3 groundCol(vec3 p, float t) {
+  float fade = exp(-t * 0.04);
+  if (world == 0) {
+    float n = fbm(p.xz * 0.15);
+    vec3 c = mix(vec3(0.72, 0.6, 0.36), vec3(0.55, 0.46, 0.28), n);
+    float scrub = smoothstep(0.62, 0.72, fbm(p.xz * 0.35 + 11.0));
+    c = mix(c, vec3(0.35, 0.36, 0.24), scrub * 0.8);
+    float blades = vnoise(vec2(p.x * 6.0, p.z * 1.2)) * vnoise(vec2(p.x * 2.0 + 5.0, p.z * 9.0));
+    c *= 1.0 + (blades - 0.25) * 0.5 * fade;
+    float rx = abs(p.x - (7.0 + sin(p.z * 0.045) * 6.0));
+    float road = smoothstep(2.6, 2.2, rx);
+    c = mix(c, vec3(0.7, 0.68, 0.64) * (0.9 + 0.2 * vnoise(p.xz * 2.0)), road);
+    return c;
+  }
+  if (world == 1 || world == 2) {
+    vec3 c = vec3(0.23, 0.23, 0.25) * (0.85 + 0.3 * fbm(p.xz * 0.8));
+    float sx = fract((p.x + 1.35) / 2.7);
+    float lane = abs(fract((p.z + 7.0) / 22.0) - 0.5);
+    float stripe = step(sx, 0.03) * step(lane, 0.12);
+    float edge = step(abs(lane - 0.12), 0.006) + step(abs(lane - 0.5) , 0.004);
+    c = mix(c, vec3(0.85, 0.85, 0.8), clamp(stripe + edge, 0.0, 1.0) * fade);
+    if (world == 2) c *= 0.5;
+    return c;
+  }
+  vec3 c = vec3(0.98, 0.86, 0.86);
+  vec2 g = abs(fract(p.xz / 4.0) - 0.5);
+  c -= vec3(0.05, 0.04, 0.02) * step(0.48, max(g.x, g.y)) * fade;
+  return c;
+}
+
+void main() {
+  setWorld();
+  vec2 uv = (gl_FragCoord.xy - 0.5 * RENDERSIZE) / RENDERSIZE.y;
+  vec3 ro = vec3(camX, camY, camZ), ta = vec3(tgtX, tgtY, tgtZ);
+  vec3 fw = normalize(ta - ro);
+  vec3 rt = normalize(cross(fw, vec3(0.0, 1.0, 0.0)));
+  vec3 up = cross(rt, fw);
+  vec3 rd = normalize(fw * (0.5 / tan(fov * 0.5)) + uv.x * rt + uv.y * up);
+
+  float tb = 1e5;
+  if (rd.y < 0.0) tb = -ro.y / rd.y;
+  int hm = -1; float hpart = -1.0, hseg = 0.0, hr = 0.0;
+  vec3 hA = vec3(0.0), hB = vec3(0.0), bnor = vec3(0.0);
+
+  for (int m = 0; m < 24; m++) {
+    if (m >= count) break;
+    vec4 bc = node(m, 27.0);
+    vec3 oc = ro - bc.xyz;
+    float b = dot(oc, rd), c = dot(oc, oc) - bc.w * bc.w, h = b * b - c;
+    if (h < 0.0) continue;
+    h = sqrt(h);
+    if (-b - h > tb || -b + h < 0.0) continue;
+    vec4 A = node(m, 0.0);
+    vec3 bn;
+    float tbx = boxI(ro, rd, vec3(A.x, 0.28, A.z), vec3(0.48, 0.28, 0.48), bn);
+    if (tbx > 0.0 && tbx < tb) { tb = tbx; hm = m; hpart = 3.0; bnor = bn; hA = A.xyz; }
+    for (int i = 0; i < 9; i++) {
+      vec4 B = node(m, float(i + 1));
+      float t = capI(ro, rd, A.xyz, B.xyz, A.w);
+      if (t > 0.0 && t < tb) { tb = t; hm = m; hpart = 0.0; hseg = float(i); hA = A.xyz; hB = B.xyz; hr = A.w; }
+      A = B;
+    }
+    vec4 head = A;
+    for (int k = 0; k < 2; k++) {
+      float b0 = 10.0 + float(k) * 4.0;
+      vec4 C = node(m, b0);
+      for (int j = 0; j < 3; j++) {
+        vec4 D = node(m, b0 + float(j + 1));
+        float t = capI(ro, rd, C.xyz, D.xyz, C.w);
+        if (t > 0.0 && t < tb) { tb = t; hm = m; hpart = 1.0; hseg = float(j); hA = C.xyz; hB = D.xyz; hr = C.w; }
+        C = D;
+      }
+    }
+    for (int k = 0; k < 8; k++) {
+      vec4 tip = node(m, 18.0 + float(k));
+      vec3 anc = k < 4 ? head.xyz : node(m, k < 6 ? 13.0 : 17.0).xyz;
+      float t = capI(ro, rd, anc, tip.xyz, tip.w);
+      if (t > 0.0 && t < tb) { tb = t; hm = m; hpart = 2.0; hseg = float(k); hA = anc; hB = tip.xyz; hr = tip.w; }
+    }
+  }
+
+  // The saucer: a flattened disc with a dome.
+  float sh_s = -1.0; vec3 snor = vec3(0.0); bool sauHit = false;
+  vec3 S = vec3(sauX, sauY, sauZ);
+  if (sauOn > 0.01) {
+    for (int k = 0; k < 2; k++) {
+      vec3 rad = k == 0 ? vec3(6.0, 0.9, 6.0) : vec3(2.2, 1.3, 2.2);
+      vec3 cc = k == 0 ? S : S + vec3(0.0, 0.45, 0.0);
+      vec3 oc = (ro - cc) / rad, dd = rd / rad;
+      float a = dot(dd, dd), b = dot(oc, dd), c = dot(oc, oc) - 1.0, h = b * b - a * c;
+      if (h > 0.0) {
+        float t = (-b - sqrt(h)) / a;
+        if (t > 0.0 && t < tb) { tb = t; sauHit = true; snor = normalize((ro + rd * t - cc) / (rad * rad)); hm = -1; }
+      }
+    }
+  }
+
+  vec3 col;
+  vec3 pos = ro + rd * tb;
+  if (sauHit) {
+    vec3 n = snor;
+    vec3 env = sky(reflect(rd, n));
+    float dif = max(dot(n, SUN), 0.0);
+    col = vec3(0.5, 0.52, 0.55) * (SUNC * dif + AMB) * 0.8 + env * 0.35;
+    col += SUNC * pow(max(dot(reflect(rd, n), SUN), 0.0), 40.0) * 0.8;
+    vec3 q = pos - S;
+    float ang = atan(q.z, q.x);
+    float lights = step(fract(ang * 3.0 + TIME * 0.6), 0.25) * smoothstep(-0.2, -0.6, n.y) * smoothstep(5.0, 4.0, length(q.xz)) * smoothstep(3.2, 3.6, length(q.xz));
+    col += vec3(1.0, 0.85, 0.5) * lights * 1.5;
+    col = mix(col, vec3(0.9, 1.0, 1.0), beam * smoothstep(1.2, 0.2, length(q.xz)) * step(n.y, -0.5));
+  } else if (hm >= 0) {
+    vec4 meta = TX(hm, 52.0), face = TX(hm, 53.0), hairC = TX(hm, 56.0);
+    float P = meta.a * 1.5;
+    vec3 base = meta.rgb;
+    vec3 n;
+    if (hpart > 2.5) {
+      n = bnor;
+      base = vec3(0.08, 0.08, 0.09);
+      vec3 q = pos - vec3(hA.x, 0.0, hA.z);
+      base += vec3(0.05) * step(0.5, fract((q.y) * 14.0)) * step(abs(n.y), 0.5);
+      base = mix(base, vec3(0.75, 0.0, 0.0), step(0.45, q.y) * step(abs(n.y), 0.5) * 0.6 * step(abs(abs(q.x) + abs(q.z) - 0.48), 0.2));
+    } else {
+      vec3 ba = hB - hA, pa = pos - hA;
+      float hh = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+      n = (pa - ba * hh) / hr;
+      vec3 ax = normalize(ba);
+      if (hpart < 1.5) {
+        float wrA = 0.25 + 0.75 * clamp(1.0 - P, 0.0, 1.0);
+        float along = (hseg + hh) * (hpart < 0.5 ? SEG : 0.55) + float(hm) * 1.7;
+        float wr = sin(along * 13.0 + 1.3 * sin(along * 3.0));
+        n = normalize(n + ax * wr * 0.13 * wrA);
+        base *= 1.0 - 0.08 * wrA * smoothstep(0.6, 1.0, wr);
+      } else {
+        base = hairC.rgb;
+        n = normalize(n + 0.3 * vec3(sin(pos.y * 40.0), 0.0, cos(pos.x * 40.0)));
+      }
+      // Face on the top body section.
+      if (hpart < 0.5 && hseg > 7.5) {
+        vec3 fr = vec3(face.r * 2.0 - 1.0, 0.0, face.g * 2.0 - 1.0);
+        vec3 f = normalize(fr - ax * dot(fr, ax) + 1e-4);
+        vec3 s = cross(ax, f);
+        float ang = atan(dot(pa, s), dot(pa, f));
+        float u = ang * hr, v = dot(pa, ax);
+        float mouth = face.b;
+        if (abs(ang) < 1.3) {
+          vec2 e = vec2(abs(u) - 0.15, v - 0.43);
+          float jig = 0.02 * sin(TIME * 7.0 + float(hm) * 3.1);
+          base = mix(base, vec3(1.0), smoothstep(0.105, 0.09, length(e)));
+          base = mix(base, vec3(0.02), smoothstep(0.05, 0.04, length(e - vec2(jig - 0.01, -0.015))));
+          float brow = abs(v - 0.58 - (abs(u) - 0.15) * (0.35 - 0.6 * mouth));
+          base = mix(base, vec3(0.03), step(brow, 0.018) * step(abs(abs(u) - 0.15), 0.09));
+          vec2 mq = vec2(u / 0.21, (v - 0.22) / (0.03 + 0.13 * mouth));
+          float inside = step(dot(mq, mq), 1.0) * step(v, 0.235);
+          float lip = step(abs(length(vec2(u / 0.21, (v - 0.235) / 0.12)) - 1.0), 0.09) * step(v, 0.235) * (1.0 - step(0.3, mouth));
+          base = mix(base, vec3(0.22, 0.01, 0.03), max(inside, lip));
+        }
+      }
+    }
+    float dif = clamp((dot(n, SUN) + 0.25) / 1.25, 0.0, 1.0);
+    float sh = world == 2 ? 1.0 : mix(1.0, shadow(pos + n * 0.05, SUN), 0.6);
+    float ao = mix(0.55, 1.0, smoothstep(0.0, 1.4, pos.y));
+    vec3 amb = AMB * (0.6 + 0.4 * n.y) + BOUNCE * (0.5 - 0.5 * n.y);
+    col = base * (SUNC * dif * sh + amb) * ao;
+    col += SUNC * pow(max(dot(reflect(rd, n), SUN), 0.0), 20.0) * 0.25 * sh;
+    col += AMB * pow(1.0 - max(dot(-rd, n), 0.0), 3.0) * 0.35;
+    if (world == 2) {
+      vec4 b0 = node(hm, 0.0);
+      vec3 L = b0.xyz + vec3(0.0, 0.3, 0.0) - pos;
+      float d = length(L);
+      col += base * vec3(1.0, 0.92, 0.8) * max(dot(n, L / d), 0.0) * 9.0 / (1.0 + d * d * 0.5);
+      col += base * 0.4 * (hpart < 2.5 ? 1.0 : 0.0) * (0.6 + 0.4 * n.y);
+    }
+  } else if (rd.y < 0.0) {
+    col = groundCol(pos, tb);
+    float sh = world == 2 ? 1.0 : shadow(pos + vec3(0.0, 0.01, 0.0), SUN);
+    col *= SUNC * max(SUN.y, 0.0) * sh + AMB * 0.7;
+    if (world == 2) {
+      for (int m = 0; m < 24; m++) {
+        if (m >= count) break;
+        vec4 b0 = node(m, 0.0);
+        vec2 d = pos.xz - b0.xz;
+        col += TX(m, 52.0).rgb * 1.6 / (1.0 + dot(d, d) * 0.35);
+      }
+    }
+    // Contact shadow round each blower.
+    for (int m = 0; m < 24; m++) {
+      if (m >= count) break;
+      vec2 d = pos.xz - node(m, 0.0).xz;
+      col *= 0.55 + 0.45 * smoothstep(0.4, 1.0, length(d));
+    }
+    if (beam > 0.01) {
+      float d = length(pos.xz - S.xz);
+      col = mix(col, vec3(0.85, 1.0, 1.0), beam * 0.6 * smoothstep(4.8, 3.5, d));
+    }
+  } else {
+    col = sky(rd);
+  }
+
+  if (!(rd.y >= 0.0 && hm < 0 && !sauHit)) col = mix(col, FOGC, 1.0 - exp(-tb * FOGD));
+
+  // The saucer's beam: a soft column of light from its belly to the ground.
+  if (beam > 0.01) {
+    vec2 o2 = ro.xz - S.xz, d2 = rd.xz;
+    float tc = -dot(o2, d2) / max(dot(d2, d2), 1e-5);
+    if (tc > 0.0 && tc < tb) {
+      vec3 p = ro + rd * tc;
+      if (p.y < S.y && p.y > 0.0) {
+        float rc = mix(4.6, 1.2, p.y / S.y);
+        float dxz = length(p.xz - S.xz);
+        float g = smoothstep(rc, rc * 0.2, dxz) * (0.55 + 0.15 * sin(p.y * 2.0 - TIME * 6.0));
+        col = mix(col, vec3(0.85, 1.0, 1.0), beam * g * 0.55);
+      }
+    }
+  }
+
+  vec2 q = gl_FragCoord.xy / RENDERSIZE;
+  col *= 0.75 + 0.25 * pow(16.0 * q.x * q.y * (1.0 - q.x) * (1.0 - q.y), 0.2);
+  col = col / (1.0 + col * 0.15);
+  gl_FragColor = vec4(pow(clamp(col, 0.0, 1.0), vec3(0.95)), 1.0);
+}
+</script>
+
+<script>
+(() => {
+  const src = document.getElementById('isf-source').textContent.trim();
+  document.getElementById('srcView').textContent = src;
+
+  // ---------- A tiny ISF loader, now with PASSES ----------
+  function parseISF(text) {
+    const m = text.match(/^\s*\/\*\s*(\{[\s\S]*?\})\s*\*\//);
+    if (!m) throw new Error('No ISF header found.');
+    return { meta: JSON.parse(m[1]), body: text.slice(m[0].length) };
+  }
+  const GLSL_TYPE = { float: 'float', bool: 'bool', long: 'int', event: 'bool', color: 'vec4', point2D: 'vec2' };
+
+  const canvas = document.getElementById('stage');
+  const gl = canvas.getContext('webgl', { antialias: false, preserveDrawingBuffer: false });
+  function fail(msg) {
+    const box = document.createElement('div');
+    box.className = 'err';
+    box.textContent = msg;
+    document.body.appendChild(box);
+  }
+  if (!gl) { fail('This browser has WebGL turned off, so the visual cannot draw. Try Chrome or Safari with hardware acceleration on.'); return; }
+
+  const { meta, body } = parseISF(src);
+  const inputs = meta.INPUTS || [];
+  const passes = meta.PASSES && meta.PASSES.length ? meta.PASSES : [{}];
+  const targets = [...new Set(passes.filter(p => p.TARGET).map(p => p.TARGET))];   // several passes may draw the same target in turn
+
+  // ISF hosts rewrite a few helper calls before compiling.
+  const rewritten = body
+    .replace(/IMG_SIZE\(\s*(\w+)\s*\)/g, '_$1_imgSize')
+    .replace(/IMG_NORM_PIXEL\(\s*(\w+)\s*,/g, 'texture2D($1,')
+    .replace(/IMG_PIXEL\(\s*(\w+)\s*,\s*([^)]+)\)/g, 'texture2D($1, ($2) / _$1_imgSize)');
+  const fragHeader = [
+    '#ifdef GL_FRAGMENT_PRECISION_HIGH', 'precision highp float;', '#else', 'precision mediump float;', '#endif',
+    'uniform vec2 RENDERSIZE;', 'uniform float TIME;', 'uniform float TIMEDELTA;', 'uniform int FRAMEINDEX;', 'uniform int PASSINDEX;', 'varying vec2 isf_FragNormCoord;',
+    ...inputs.filter(i => i.TYPE !== 'image').map(i => `uniform ${GLSL_TYPE[i.TYPE] || 'float'} ${i.NAME};`),
+    ...inputs.filter(i => i.TYPE === 'image').map(i => `uniform sampler2D ${i.NAME}; uniform vec2 _${i.NAME}_imgSize;`),
+    ...targets.map(t => `uniform sampler2D ${t}; uniform vec2 _${t}_imgSize;`)
+  ].join('\n');
+  const vert = 'attribute vec2 p; varying vec2 isf_FragNormCoord; void main(){ isf_FragNormCoord = p * 0.5 + 0.5; gl_Position = vec4(p, 0.0, 1.0); }';
+
+  function compile(type, code) {
+    const sh = gl.createShader(type);
+    gl.shaderSource(sh, code);
+    gl.compileShader(sh);
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh));
+    return sh;
+  }
+  function link(fs) {
+    const pr = gl.createProgram();
+    gl.attachShader(pr, compile(gl.VERTEX_SHADER, vert));
+    gl.attachShader(pr, compile(gl.FRAGMENT_SHADER, fs));
+    gl.linkProgram(pr);
+    if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(pr));
+    return pr;
+  }
+  let prog, copyProg;
+  try {
+    prog = link(fragHeader + '\n' + rewritten);
+    // Used to keep a persistent grid's contents when the screen rotates.
+    copyProg = link('precision mediump float; uniform sampler2D src; varying vec2 isf_FragNormCoord; void main(){ gl_FragColor = texture2D(src, isf_FragNormCoord); }');
+  } catch (e) { fail('The shader did not compile: ' + e.message); return; }
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  [prog, copyProg].forEach(pr => {
+    const loc = gl.getAttribLocation(pr, 'p');
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  });
+  gl.useProgram(prog);
+  // Uniform locations, looked up once per program.
+  const ulocs = new Map();
+  const U = n => { let m = ulocs.get(prog); if (!m) ulocs.set(prog, m = {}); if (!(n in m)) m[n] = gl.getUniformLocation(prog, n); return m[n]; };
+  // HOUSEPARTY_VARIANT (opt-in): names a long input, e.g. "scene". The page then also compiles one program per
+  // value of that input, with "#define HP_VARIANT <value>" in front, and draws with the one for the current value.
+  // The shader stays one source; with HP_VARIANT defined it can make that input a constant, so the compiler drops
+  // every other scene's code and each program is small and fast. Hosts without this (the rack, other ISF apps)
+  // just compile the whole shader as before. Variants compile in the background, one every few frames.
+  const variantIn = meta.HOUSEPARTY_VARIANT && inputs.find(i => i.NAME === meta.HOUSEPARTY_VARIANT);
+  const fullProg = prog, variants = new Map();
+  function variantProg(v, build) {
+    if (variants.has(v)) return variants.get(v);
+    if (!build) return null;
+    let pr = null;
+    try {
+      pr = link(fragHeader + '\n#define HP_VARIANT ' + (v | 0) + '\n' + rewritten);
+      const loc = gl.getAttribLocation(pr, 'p');
+      gl.enableVertexAttribArray(loc);
+      gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    } catch (e) { pr = fullProg; }
+    variants.set(v, pr);
+    return pr;
+  }
+  let variantTick = 0;
+  function pickProg() {
+    if (!variantIn) return;
+    const v = +val[variantIn.NAME] | 0;
+    // the one needed now: build it if missing (a short hitch once); otherwise warm up one other every 8 frames
+    prog = variantProg(v, true) || fullProg;
+    if (++variantTick % 8 === 0) {
+      const todo = (variantIn.VALUES || []).find(x => !variants.has(x));
+      if (todo !== undefined) variantProg(todo, true);
+    }
+  }
+  const uTime = () => U('TIME'), uDelta = () => U('TIMEDELTA'), uSize = () => U('RENDERSIZE'), uFrame = () => U('FRAMEINDEX'), uPass = () => U('PASSINDEX');
+
+  // ---------- Render targets (ping-pong pairs, so a pass can read last frame) ----------
+  // ISF "FLOAT": true on a pass asks for a half-float target (needed by simulations); 8-bit when the device can't.
+  const halfExt = gl.getExtension('OES_texture_half_float');
+  const halfLinear = !!gl.getExtension('OES_texture_half_float_linear');
+  gl.getExtension('EXT_color_buffer_half_float');
+  let halfOK = !!halfExt;
+  function makeTex(w, h, float) {
+    const t = gl.createTexture();
+    const fb = gl.createFramebuffer();
+    const useHalf = float && halfOK;
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, useHalf ? halfExt.HALF_FLOAT_OES : gl.UNSIGNED_BYTE, null);
+    const filt = useHalf && !halfLinear ? gl.NEAREST : gl.LINEAR;
+    [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER].forEach(k => gl.texParameteri(gl.TEXTURE_2D, k, filt));
+    [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T].forEach(k => gl.texParameteri(gl.TEXTURE_2D, k, gl.CLAMP_TO_EDGE));
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+    if (useHalf && gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
+      halfOK = false; gl.deleteFramebuffer(fb); gl.deleteTexture(t); return makeTex(w, h, false);
+    }
+    gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+    return { t, fb };
+  }
+  const T = {};
+  targets.forEach((name, k) => { T[name] = { w: 0, h: 0, read: null, write: null, unit: k, uS: U(name), uSz: U('_' + name + '_imgSize') }; });
+
+  // WIDTH/HEIGHT expressions use $WIDTH/$HEIGHT in CSS pixels, so the grid stays the same
+  // when the page lowers its drawing resolution to keep up on a slow phone.
+  function evalSize(expr, W, H) {
+    if (expr === undefined) return null;
+    const js = String(expr).replace(/\$WIDTH/g, W).replace(/\$HEIGHT/g, H)
+      .replace(/\$(\w+)/g, (_, n) => +val[n] || 0).replace(/\b(floor|ceil|round|max|min|abs|pow|sqrt)\b/g, 'Math.$1');
+    if (!/^[\d\s.+\-*/(),Math.a-z]*$/.test(js)) return null;
+    return Math.max(1, Math.round(Function('return (' + js + ')')()));
+  }
+  function sizeTargets() {
+    const W = canvas.clientWidth, H = canvas.clientHeight;
+    passes.forEach(p => {
+      if (!p.TARGET) return;
+      const t = T[p.TARGET];
+      const w = evalSize(p.WIDTH, W, H) || canvas.width, h = evalSize(p.HEIGHT, W, H) || canvas.height;
+      if (w === t.w && h === t.h) return;
+      const old = t.read;
+      const fl = passes.some(q => q.TARGET === p.TARGET && q.FLOAT);
+      t.read = makeTex(w, h, fl); t.write = makeTex(w, h, fl); t.w = w; t.h = h;
+      if (old && p.PERSISTENT) {   // stretch the old grid into the new one
+        gl.useProgram(copyProg);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, t.read.fb);
+        gl.viewport(0, 0, w, h);
+        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, old.t);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        gl.useProgram(prog);
+      }
+    });
+  }
+
+  // ---------- Knob values, one per input ----------
+  const reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const val = {};
+  inputs.forEach(i => { val[i.NAME] = Array.isArray(i.DEFAULT) ? i.DEFAULT.slice() : (i.DEFAULT ?? (i.TYPE === 'event' ? false : 0)); });
+  const TOUCH_NOTE = "Tap to puff; drag to look round";
+  if (reduced) { val.energy = 0.4; val.cam = 1; val.visitor = 0; }
+
+  // House Party extension (ignored by other ISF hosts): an event marked HOUSEPARTY_TICKS
+  // gets no control; the host fires it as many times a second as the named knob says.
+  const ticks = inputs.filter(i => i.HOUSEPARTY_TICKS);
+  // Image inputs: the toy's own script fills imageTex[name] = { t, w, h } (for example, text drawn on a canvas).
+  const imageTex = {};
+  const MUSIC = new Set(['pulse', 'beat']);   // turned by the beat clock here, by the bridge at a party
+  const fired = new Set();                    // events to send as true on the next frame only
+
+  // ---------- Build controls from the header ----------
+  const knobs = document.getElementById('knobs');
+  const outputs = {};
+  const manual = {};
+  const pts = inputs.filter(x => x.TYPE === 'point2D' && /^finger\d$/.test(x.NAME));
+  inputs.forEach(i => {
+    if (i.TYPE === 'image' || i.HOUSEPARTY_HIDDEN || i.HOUSEPARTY_TICKS || (i.TYPE === 'event' && (MUSIC.has(i.NAME) || !i.LABEL))) return;   // unlabelled events are fired by the page itself
+    if (i.TYPE === 'point2D' && pts[0] !== i) return;   // one row for all fingers; finger speeds get none
+    const row = document.createElement('div');
+    row.className = 'knob';
+    const id = 'k-' + i.NAME;
+    const lab = document.createElement('label');
+    lab.htmlFor = id;
+    lab.textContent = i.LABEL || i.NAME;
+    row.appendChild(lab);
+    if (i.TYPE === 'float') {
+      const r = document.createElement('input');
+      r.type = 'range'; r.id = id; r.min = i.MIN; r.max = i.MAX; r.step = (i.MAX - i.MIN) / 200; r.value = val[i.NAME];
+      const o = document.createElement('output');
+      o.htmlFor = id; o.textContent = (+r.value).toFixed(i.MAX - i.MIN < 0.2 ? 3 : 2);
+      outputs[i.NAME] = { r, o };
+      // A knob that runs from negative to positive gets a centre mark and snaps to 0 near the middle.
+      const bipolar = i.MIN < 0 && i.MAX > 0;
+      if (bipolar) {
+        const dl = document.createElement('datalist');
+        dl.id = id + '-ticks'; dl.innerHTML = '<option value="0"></option>';
+        row.appendChild(dl); r.setAttribute('list', dl.id);
+      }
+      r.addEventListener('input', () => {
+        let v = +r.value;
+        if (bipolar && Math.abs(v) < (i.MAX - i.MIN) * 0.03) { v = 0; r.value = 0; }
+        val[i.NAME] = v; o.textContent = v.toFixed(2); manual[i.NAME] = performance.now();
+      });
+      row.append(r, o);
+      if (MUSIC.has(i.NAME)) lab.insertAdjacentHTML('beforeend', '<span class="tag music">beat</span>');
+    } else if (i.TYPE === 'long' && (i.VALUES || []).length > 8) {
+      // A long pick-one list (more than 8 choices) becomes a dropdown.
+      const sel = document.createElement('select');
+      sel.id = id;
+      sel.style.cssText = 'font:inherit;padding:8px 10px;border-radius:10px;background:#1b1b24;color:inherit;border:1px solid #3a3a48;max-width:100%';
+      (i.VALUES || []).forEach((v, k) => { const o = document.createElement('option'); o.value = v; o.textContent = (i.LABELS || [])[k] ?? v; o.selected = v === val[i.NAME]; sel.appendChild(o); });
+      sel.addEventListener('change', () => { val[i.NAME] = +sel.value; });
+      row.appendChild(sel);
+    } else if (i.TYPE === 'long') {
+      // A pick-one input becomes a row of buttons.
+      row.classList.add('wide');
+      const seg = document.createElement('div');
+      seg.className = 'seg'; seg.id = id; seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', i.LABEL || i.NAME);
+      lab.removeAttribute('for');
+      (i.VALUES || []).forEach((v, k) => {
+        const b = document.createElement('button');
+        b.textContent = (i.LABELS || [])[k] ?? v;
+        b.setAttribute('aria-pressed', String(v === val[i.NAME]));
+        b.classList.toggle('on', v === val[i.NAME]);
+        b.addEventListener('click', () => {
+          val[i.NAME] = v;
+          seg.querySelectorAll('button').forEach(x => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); });
+        });
+        seg.appendChild(b);
+      });
+      row.appendChild(seg);
+    } else if (i.TYPE === 'event') {
+      const b = document.createElement('button');
+      b.className = 'act'; b.id = id; b.textContent = i.LABEL || i.NAME;
+      lab.textContent = ''; lab.setAttribute('aria-hidden', 'true');
+      b.addEventListener('click', () => fired.add(i.NAME));
+      row.appendChild(b);
+    } else if (i.TYPE === 'point2D') {
+      lab.textContent = pts.length > 1 ? 'Fingers' : (i.LABEL || i.NAME);
+      lab.insertAdjacentHTML('beforeend', '<span class="tag">touch</span>');
+      const n = document.createElement('span');
+      n.className = 'note'; n.id = id;
+      n.textContent = TOUCH_NOTE.replace('{n}', pts.length);
+      row.append(n);
+    }
+    knobs.appendChild(row);
+  });
+
+  // Beat clock: tap tempo, starts at 124 BPM.
+  const beatRow = document.createElement('div');
+  beatRow.className = 'beat';
+  beatRow.innerHTML = '<span class="lamp" id="lamp"></span><span class="bpm" id="bpm">124</span><small>BPM</small><button id="tap">Tap tempo</button><button id="half">½</button><button id="dbl">×2</button><small id="tapNote">Tap 4 times on the beat</small>';
+  knobs.appendChild(beatRow);
+  let bpm = 124, beat0 = performance.now(), taps = [], lastBeat = -1;
+  const bpmEl = document.getElementById('bpm'), lamp = document.getElementById('lamp');
+  const setBpm = b => { bpm = Math.min(200, Math.max(60, b)); bpmEl.textContent = Math.round(bpm); };
+  document.getElementById('tap').addEventListener('click', () => {
+    const t = performance.now();
+    taps = taps.filter(x => t - x < 2500); taps.push(t);
+    if (taps.length >= 2) {
+      const gaps = taps.slice(1).map((x, k) => x - taps[k]);
+      setBpm(60000 / (gaps.reduce((a, b) => a + b, 0) / gaps.length));
+    }
+    beat0 = t; lastBeat = -1;
+  });
+  document.getElementById('half').addEventListener('click', () => setBpm(bpm / 2));
+  document.getElementById('dbl').addEventListener('click', () => setBpm(bpm * 2));
+
+  // ---------- Tube Crew engine (shared by the toy page and the Wall Controller driver) ----------
+  // makeTubeCrew(gl) simulates every dancer (a chain of fabric tube: air straightens it, gravity folds it),
+  // packs the chains into the "rig" image and works out the camera. step() writes the hidden inputs into val.
+  function makeTubeCrew(gl) {
+  const COLS = 58, MAXM = 24, SEG = 0.66, BR = 0.42, ASEG = 0.55, AR = 0.19, BASEY = 0.55;
+    const CAMS = ['Field', 'Street', "Worm's eye", 'Drone', 'Overhead', 'Dolly', 'Close-up'];
+    const DANCES = ['Groove', 'Wave', 'Flop', 'Chaos', 'Sync'];
+    const C = (r, g, b) => [r, g, b];
+    const PALETTES = [
+      [[C(.86, .08, .06), C(1, .85, .1)], [C(1, .76, .04), C(.9, .15, .05)], [C(.1, .22, .8), C(.3, .85, 1)], [C(.25, .72, .12), C(.9, .95, .2)],
+       [C(1, .42, .05), C(1, .85, .2)], [C(.95, .2, .45), C(1, .95, .95)], [C(.04, .58, .52), C(.9, 1, .95)], [C(.38, .14, .68), C(1, .5, .8)]],
+      [[C(.86, .08, .06), C(1, .85, .1)], [C(1, .42, .05), C(1, .9, .3)], [C(1, .76, .04), C(.9, .2, .05)], [C(.75, .02, .2), C(1, .6, .2)], [C(1, .45, .35), C(1, .95, .7)]],
+      [[C(.1, .22, .8), C(.3, .85, 1)], [C(.04, .58, .52), C(.85, 1, .95)], [C(.38, .14, .68), C(.7, .6, 1)], [C(.05, .1, .4), C(.3, .7, 1)], [C(.4, .9, .7), C(1, 1, 1)]],
+      [[C(1, .1, .6), C(.2, 1, 1)], [C(.6, 1, .1), C(1, .2, .7)], [C(.1, .9, 1), C(1, 1, .2)], [C(1, .5, 0), C(.4, .2, 1)], [C(.6, .2, 1), C(.6, 1, .1)]],
+      [[C(.86, .08, .06), C(1, .85, .1)]]
+    ];
+    const h1 = n => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
+    const n1 = x => { const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f); return h1(i) * (1 - u) + h1(i + 1) * u; };
+    const norm = (x, y, z) => { const l = Math.hypot(x, y, z) || 1; return [x / l, y / l, z / l]; };
+    const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  
+    // ---------- Layouts: where each blower stands ----------
+    function layoutPts(kind, n) {
+      const P = [];
+      if (kind === 0) {   // Field: scattered like a farm field, but never too close (best of several tries)
+        const W = 10 + n * 2.0, D = 6 + n * 1.3;
+        for (let i = 0; i < n; i++) {
+          let best = null, bd = -1;
+          for (let j = 0; j < 14; j++) {
+            const c = [(h1(i * 31 + j * 7.3) - 0.5) * W, (h1(i * 17 + j * 3.1 + 50) - 0.5) * D];
+            let d = 1e9; P.forEach(p => { d = Math.min(d, Math.hypot(p[0] - c[0], p[1] - c[1])); });
+            if (d > bd) { bd = d; best = c; }
+          }
+          P.push(best);
+        }
+      } else if (kind === 1) for (let i = 0; i < n; i++) P.push([(i - (n - 1) / 2) * 3.4, 0]);
+      else if (kind === 2) { const rows = Math.ceil(n / 2); for (let i = 0; i < n; i++) P.push([i % 2 ? 4 : -4, (Math.floor(i / 2) - (rows - 1) / 2) * 4.5]); }
+      else if (kind === 3) { const R = Math.max(4, n * 3.3 / (2 * Math.PI)); for (let i = 0; i < n; i++) { const a = i / n * 2 * Math.PI; P.push([Math.sin(a) * R, -Math.cos(a) * R]); } }
+      else if (kind === 4) { const c = Math.ceil(Math.sqrt(n)), r = Math.ceil(n / c); for (let i = 0; i < n; i++) P.push([((i % c) - (c - 1) / 2) * 4, (Math.floor(i / c) - (r - 1) / 2) * 4]); }
+      else if (kind === 5) { for (let i = 0; i < n; i++) { const k = Math.ceil(i / 2), s = i % 2 ? 1 : -1; P.push([s * k * 2.6, k * 2.6]); } }
+      else { for (let i = 0; i < n; i++) { const r = 2.4 * Math.sqrt(i + 0.5), a = i * 2.39996; P.push([Math.cos(a) * r, Math.sin(a) * r]); } }
+      let cx = 0, cz = 0; P.forEach(p => { cx += p[0]; cz += p[1]; }); cx /= n; cz /= n;
+      P.forEach(p => { p[0] -= cx; p[1] -= cz; });
+      let R = 3; P.forEach(p => { R = Math.max(R, Math.hypot(p[0], p[1]) + 2); });
+      return { P, R };
+    }
+  
+    // ---------- One dancer ----------
+    function makeMan(i, x, z) {
+      const N = 18;   // 10 body + 8 arm nodes
+      const X = new Float32Array(N * 3), Q = new Float32Array(N * 3);
+      const M = { i, X, Q, bx: x, bz: z, tx: x, tz: z, seed: h1(i * 9.7) * 100, off: h1(i * 3.3) - 0.5, yaw: 0, P: 0, kick: 0, inflate: 0, hair: new Float32Array(24) };
+      for (let k = 0; k < N; k++) {   // start as a heap on the blower, then inflate
+        X[k * 3] = x + (h1(i * 50 + k) - 0.5) * 0.8; X[k * 3 + 1] = 0.6 + k * 0.05; X[k * 3 + 2] = z + (h1(i * 70 + k) - 0.5) * 0.8;
+      }
+      Q.set(X);
+      for (let k = 0; k < 8; k++) { M.hair[k * 3] = x; M.hair[k * 3 + 1] = 1; M.hair[k * 3 + 2] = z; }
+      return M;
+    }
+    const men = [];
+    let lay = null, layKey = '';
+  
+    // Air pressure for one dancer from the dance and the beat.
+    function danceP(mode, M, b, nx, e) {
+      const fr = x => x - Math.floor(x);
+      if (mode === 0) { const pu = Math.exp(-fr(b + M.off * 0.3) * 5); return 0.55 + 0.5 * pu * e + 0.1 * (n1(b * 0.7 + M.seed) - 0.5); }
+      if (mode === 1) { const w = 0.5 + 0.5 * Math.cos(2 * Math.PI * (b / 4 - nx)); return 0.15 + 1.05 * Math.pow(w, 2) * e; }
+      if (mode === 2) {
+        const bar = Math.floor(b / 4), bb = ((b % 4) + 4) % 4;
+        if ((M.i + bar) % 2 === 0 && bb >= 2.6) return 0.04;
+        return 0.6 + 0.5 * Math.exp(-fr(b) * 5) * e + (bb < 0.6 ? 0.45 * e : 0);
+      }
+      if (mode === 3) {
+        const bi = Math.floor(b), pu = h1(bi * 7 + M.i * 13) < 0.35 ? Math.exp(-fr(b) * 4) : 0;
+        return 0.3 + 0.7 * n1(b * 0.9 + M.seed * 10) * e + 0.7 * pu * e;
+      }
+      const b8 = ((b % 8) + 8) % 8;
+      if (b8 >= 7) return 0.05;
+      return 0.5 + 0.7 * Math.exp(-fr(b) * 4) * e;
+    }
+  
+    const sub = { acc: 0 };
+    function stepMan(M, h, t, P, wind, shakeF, sau) {
+      const X = M.X, Q = M.Q, G = 7.5;
+      X[0] = M.bx; X[1] = BASEY; X[2] = M.bz;
+      const fx = Math.sin(M.yaw), fz = Math.cos(M.yaw);   // facing
+      const sx = Math.cos(M.yaw), sz = -Math.sin(M.yaw);   // side
+      const turb = 9 * (0.4 + 0.6 * Math.min(1.2, P));
+      const pull = (k, ax, ay, az, damp) => {
+        const o = k * 3;
+        const h2 = h * h;
+        let x = X[o]; X[o] = x + (x - Q[o]) * damp + ax * h2; Q[o] = x;
+        x = X[o + 1]; X[o + 1] = x + (x - Q[o + 1]) * damp + ay * h2; Q[o + 1] = x;
+        x = X[o + 2]; X[o + 2] = x + (x - Q[o + 2]) * damp + az * h2; Q[o + 2] = x;
+      };
+      const beamF = (k) => {
+        if (!sau.beam) return [0, 0, 0];
+        const dx = sau.x - X[k * 3], dz = sau.z - X[k * 3 + 2], d = Math.hypot(dx, dz);
+        if (d > 4.6) return [0, 0, 0];
+        const f = sau.beam * (1 - d / 4.6);
+        return [dx * 2 * f, 26 * f, dz * 2 * f];
+      };
+      // Body
+      for (let i = 1; i < 10; i++) {
+        const o = i * 3, p = (i - 1) * 3;
+        let dx = 0, dy = 1, dz = 0;
+        if (i > 1) { const q = (i - 2) * 3; [dx, dy, dz] = norm(X[p] - X[q], X[p + 1] - X[q + 1], X[p + 2] - X[q + 2]); }
+        const [ex, ey, ez] = norm(dx, dy + 0.45, dz);
+        const K = 70 * P, hi = i / 9;
+        let ax = (X[p] + ex * SEG - X[o]) * K, ay = (X[p + 1] + ey * SEG - X[o + 1]) * K - G + 8 * P * (0.5 + 0.5 * hi), az = (X[p + 2] + ez * SEG - X[o + 2]) * K;
+        ax += (n1(t * 1.6 + i * 0.22 + M.seed) - 0.5) * turb * hi + wind * 9 * hi * (0.6 + 0.6 * n1(t * 0.5 + M.seed)) + shakeF[0] * hi;
+        az += (n1(t * 1.4 + i * 0.25 + M.seed + 40) - 0.5) * turb * hi + shakeF[2] * hi;
+        const bf = beamF(i); ax += bf[0]; ay += bf[1]; az += bf[2];
+        pull(i, ax, ay, az, 0.985);
+      }
+      // Arms (pinned at the shoulders, node 6, they reach out sideways while inflated and droop when not)
+      for (let s = 0; s < 2; s++) {
+        const sg = s ? -1 : 1, r0 = 10 + s * 4;
+        X[r0 * 3] = X[18] + sx * sg * 0.38; X[r0 * 3 + 1] = X[19]; X[r0 * 3 + 2] = X[20] + sz * sg * 0.38;
+        Q[r0 * 3] = X[r0 * 3]; Q[r0 * 3 + 1] = X[r0 * 3 + 1]; Q[r0 * 3 + 2] = X[r0 * 3 + 2];
+        for (let j = 1; j < 4; j++) {
+          const k = r0 + j, o = k * 3, p = (k - 1) * 3;
+          const [ex, ey, ez] = norm(sx * sg + fx * 0.15 * Math.sin(t * 2 + M.seed), 1.1 * P - 0.35, sz * sg + fz * 0.15 * Math.cos(t * 2.3 + M.seed));
+          const K = 45 * P;
+          let ax = (X[p] + ex * ASEG - X[o]) * K, ay = (X[p + 1] + ey * ASEG - X[o + 1]) * K - G, az = (X[p + 2] + ez * ASEG - X[o + 2]) * K;
+          ax += (n1(t * 2.6 + j + s * 9 + M.seed) - 0.5) * turb * 1.8 + wind * 6 + shakeF[0] * 1.5;
+          ay += (n1(t * 2.2 + j + s * 5 + M.seed + 20) - 0.5) * turb * 1.8;
+          az += (n1(t * 2.4 + j + s * 7 + M.seed + 60) - 0.5) * turb * 1.8 + shakeF[2] * 1.5;
+          const bf = beamF(k); ax += bf[0]; ay += bf[1]; az += bf[2];
+          pull(k, ax, ay, az, 0.975);
+        }
+      }
+      // Keep every section its length; nothing sinks below the ground.
+      for (let it = 0; it < 5; it++) {
+        for (let i = 1; i < 18; i++) {
+          if (i === 10 || i === 14) continue;
+          const a = (i === 11 || i === 15 ? i - 1 : i - 1) * 3, o = i * 3, L = i >= 10 ? ASEG : SEG;
+          const dx = X[o] - X[a], dy = X[o + 1] - X[a + 1], dz = X[o + 2] - X[a + 2];
+          const d = Math.hypot(dx, dy, dz) || 1e-6, c = (d - L) / d;
+          const pinned = i === 1 || i === 11 || i === 15;
+          const wa = pinned ? 0 : 0.5, wb = pinned ? 1 : 0.5;
+          X[a] += dx * c * wa; X[a + 1] += dy * c * wa; X[a + 2] += dz * c * wa;
+          X[o] -= dx * c * wb; X[o + 1] -= dy * c * wb; X[o + 2] -= dz * c * wb;
+        }
+        X[0] = M.bx; X[1] = BASEY; X[2] = M.bz;
+        for (let i = 1; i < 18; i++) { const r = i >= 10 ? AR : BR; if (X[i * 3 + 1] < r) X[i * 3 + 1] = r; }
+      }
+    }
+  
+    // Tassels: four on the head, two on each hand, fluttering in the air.
+    function hairFor(M, t, dt, wind) {
+      const X = M.X, H = M.hair, k = Math.min(1, dt * 18);
+      const put = (n, ax, ay, az, dx, dy, dz, len) => {
+        const [ux, uy, uz] = norm(dx, dy, dz);
+        const tx = ax + ux * len, ty = ay + uy * len, tz = az + uz * len;
+        H[n * 3] += (tx - H[n * 3]) * k; H[n * 3 + 1] += (ty - H[n * 3 + 1]) * k; H[n * 3 + 2] += (tz - H[n * 3 + 2]) * k;
+      };
+      const [tx, ty, tz] = norm(X[27] - X[24], X[28] - X[25], X[29] - X[26]);
+      for (let j = 0; j < 4; j++) {
+        const a = j * Math.PI / 2 + M.seed, fl = n1(t * 6 + j * 3 + M.seed) - 0.5;
+        put(j, X[27], X[28], X[29], tx * 0.8 + Math.cos(a) + fl + wind, ty * 0.8 + 0.3 * fl, tz * 0.8 + Math.sin(a) - fl, 0.62);
+      }
+      for (let s = 0; s < 2; s++) {
+        const e = (13 + s * 4) * 3, p = (12 + s * 4) * 3;
+        const [ax, ay, az] = norm(X[e] - X[p], X[e + 1] - X[p + 1], X[e + 2] - X[p + 2]);
+        for (let j = 0; j < 2; j++) {
+          const fl = n1(t * 7 + j * 5 + s * 11 + M.seed) - 0.5, sg = j ? 1 : -1;
+          put(4 + s * 2 + j, X[e], X[e + 1], X[e + 2], ax + sg * 0.6 * ay + fl + wind * 0.5, ay + 0.4 * fl - sg * 0.6 * ax, az + sg * 0.5 + fl, 0.42);
+        }
+      }
+    }
+  
+    // ---------- Packing the rig image ----------
+    const tex = new Uint8Array(COLS * MAXM * 4);
+    const rigTex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, rigTex);
+    [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER].forEach(k => gl.texParameteri(gl.TEXTURE_2D, k, gl.NEAREST));
+    [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T].forEach(k => gl.texParameteri(gl.TEXTURE_2D, k, gl.CLAMP_TO_EDGE));
+    const p16 = (o, v, lo, hi) => { const e = Math.round(clamp((v - lo) / (hi - lo), 0, 1) * 65535); tex[o] = e >> 8; tex[o + 1] = e & 255; };
+    function putNode(row, k, x, y, z, r) {
+      const o = (row * COLS + k * 2) * 4;
+      p16(o, x, -60, 60); p16(o + 2, y, -2, 30); p16(o + 4, z, -60, 60); p16(o + 6, r, 0, 8);
+    }
+    function packMan(row, M, pal) {
+      const X = M.X;
+      let cx = 0, cy = 0, cz = 0;
+      for (let k = 0; k < 18; k++) { putNode(row, k, X[k * 3], X[k * 3 + 1], X[k * 3 + 2], k < 10 ? BR : AR); cx += X[k * 3]; cy += X[k * 3 + 1]; cz += X[k * 3 + 2]; }
+      for (let k = 0; k < 8; k++) putNode(row, 18 + k, M.hair[k * 3], M.hair[k * 3 + 1], M.hair[k * 3 + 2], k < 4 ? 0.07 : 0.05);
+      cx /= 18; cy /= 18; cz /= 18;
+      let R = Math.hypot(M.bx - cx, cy, M.bz - cz) + 0.8;
+      for (let k = 0; k < 18; k++) R = Math.max(R, Math.hypot(X[k * 3] - cx, X[k * 3 + 1] - cy, X[k * 3 + 2] - cz) + 0.5);
+      for (let k = 0; k < 8; k++) R = Math.max(R, Math.hypot(M.hair[k * 3] - cx, M.hair[k * 3 + 1] - cy, M.hair[k * 3 + 2] - cz) + 0.1);
+      putNode(row, 27, cx, cy, cz, Math.min(7.99, R));
+      const c = pal[M.i % pal.length], o = (row * COLS + 52) * 4;
+      tex[o] = c[0][0] * 255; tex[o + 1] = c[0][1] * 255; tex[o + 2] = c[0][2] * 255; tex[o + 3] = clamp(M.P / 1.5, 0, 1) * 255;
+      const f = (row * COLS + 53) * 4;
+      tex[f] = (Math.sin(M.yaw) * 0.5 + 0.5) * 255; tex[f + 1] = (Math.cos(M.yaw) * 0.5 + 0.5) * 255; tex[f + 2] = clamp(M.P - 0.55 + M.kick, 0, 1) * 255; tex[f + 3] = 255;
+      const hc = (row * COLS + 56) * 4;
+      tex[hc] = c[1][0] * 255; tex[hc + 1] = c[1][1] * 255; tex[hc + 2] = c[1][2] * 255; tex[hc + 3] = 255;
+    }
+    const io = { shake: 0, shakeLat: 0, shakeFwd: 0, gust: 0, allKick: 0, mic: 0, camBump: 0, dragYaw: 0, dragPitch: 0, camChanged: false };
+    const cam = { p: [0, 2, -30], g: [0, 2.5, 0], fov: 0.8, fw: [0, 0, 1], rt: [-1, 0, 0], up: [0, 1, 0] };
+    let lastCamKey = -1, curCam = null, simT = 0;
+    function project(x, y, z, W, H) {
+      const d = [x - cam.p[0], y - cam.p[1], z - cam.p[2]];
+      const zf = d[0] * cam.fw[0] + d[1] * cam.fw[1] + d[2] * cam.fw[2];
+      if (zf < 0.2) return null;
+      const f = 0.5 / Math.tan(cam.fov / 2);
+      const ux = f * (d[0] * cam.rt[0] + d[1] * cam.rt[1] + d[2] * cam.rt[2]) / zf, uy = f * (d[0] * cam.up[0] + d[1] * cam.up[1] + d[2] * cam.up[2]) / zf;
+      return [W / 2 + ux * H, H / 2 - uy * H];
+    }
+    // Puff the dancer nearest a screen point (pixels in a W x H view), or everyone if none is close.
+    function puffAt(px, py, W, H, n) {
+      let best = null, bd = 70;
+      men.slice(0, n).forEach(M => {
+        for (let k = 2; k < 10; k += 2) {
+          const s = project(M.X[k * 3], M.X[k * 3 + 1], M.X[k * 3 + 2], W, H); if (!s) continue;
+          const d = Math.hypot(s[0] - px, s[1] - py); if (d < bd) { bd = d; best = M; }
+        }
+      });
+      if (best) best.kick = 1.1; else io.allKick = 0.7;
+    }
+    function puffKey(note, vel, n) { const M = men[((note - 36) % n + n) % n]; if (M) M.kick = 0.4 + vel; }
+    // ---------- Cameras ----------
+    function heroOf(b, n) { return men[((Math.floor(b / 16) % n) + n) % n]; }
+    function camFor(k, t, b, R, n) {
+      const H = heroOf(b, n);
+      if (k === 0) return { p: [R * 0.15, 1.5, -(R * 1.05 + 7)], g: [0, 2.6, 0], fov: 0.75 };
+      if (k === 1) return { p: [-(R * 0.9 + 5), 1.7, -(R * 0.75 + 5)], g: [0, 3, 0], fov: 0.85 };
+      if (k === 2) return { p: [H.bx - 0.9, 0.25, H.bz - 1.3], g: [H.X[27], H.X[28] + 0.6, H.X[29]], fov: 1.45 };
+      if (k === 3) { const a = t * 0.06; return { p: [Math.sin(a) * (R + 13), R * 0.5 + 9, -Math.cos(a) * (R + 13)], g: [0, 2, 0], fov: 0.85 }; }
+      if (k === 4) return { p: [0, R * 1.5 + 14, -0.5], g: [0, 0, 0], fov: 0.95 };
+      if (k === 5) { const s = Math.sin(t * 0.08) * (R + 3); return { p: [s, 2.4, -(R * 0.55 + 6)], g: [s * 0.6, 3, 0], fov: 0.8 }; }
+      const a = 0.35 * Math.sin(t * 0.15);
+      return { p: [H.X[27] + Math.sin(a) * 4.5, H.X[28] + 0.4, H.X[29] - Math.cos(a) * 4.5], g: [H.X[27], H.X[28] - 0.3, H.X[29]], fov: 0.7 };
+    }
+    // One frame: dt in seconds, b = beats on the clock, t = seconds, asp = width / height. Returns what to label.
+    function step(val, dt, b, t, asp) {
+      const n = +val.count;
+      // Layout (blowers glide to new spots when it changes)
+      const key = val.layout + ':' + n;
+      if (key !== layKey) { layKey = key; lay = layoutPts(+val.layout, n); }
+      for (let i = 0; i < n; i++) {
+        if (!men[i]) men[i] = makeMan(i, lay.P[i][0], lay.P[i][1]);
+        const M = men[i]; M.tx = lay.P[i][0]; M.tz = lay.P[i][1];
+      }
+      // Saucer visits: every 16 bars it drifts in, hovers with its beam on for a while, and leaves.
+      const sau = { x: 0, y: 40, z: 0, on: 0, beam: 0 };
+      if (+val.visitor) {
+        const ph = ((b % 64) + 64) % 64;
+        if (ph >= 32) {
+          const q = ph - 32, R = lay.R;
+          const hov = [Math.sin(t * 0.3) * R * 0.2, 11 + R * 0.15 + Math.sin(t * 1.1) * 0.4, R * 0.25];
+          const from = [-(R + 70), 30, R + 50], to = [R + 80, 34, R + 60];
+          const ease = x => x * x * (3 - 2 * x);
+          let p = hov;
+          if (q < 6) { const e = ease(q / 6); p = from.map((v, i) => v + (hov[i] - v) * e); }
+          else if (q > 26) { const e = ease((q - 26) / 6); p = hov.map((v, i) => v + (to[i] - v) * e * e); }
+          sau.x = p[0]; sau.y = p[1]; sau.z = p[2]; sau.on = 1;
+          sau.beam = q < 7 ? 0 : q < 9 ? (q - 7) / 2 : q < 24 ? 1 : q < 26 ? (26 - q) / 2 : 0;
+        }
+      }
+      Object.assign(val, { sauX: sau.x, sauY: sau.y, sauZ: sau.z, sauOn: sau.on, beam: sau.beam });
+      // Dance
+      const mode = +val.dance ? +val.dance - 1 : Math.floor(b / 32) % 5;
+      const e = +val.energy;
+      io.shake *= Math.exp(-dt * 2.2); io.shakeLat *= Math.exp(-dt * 3); io.shakeFwd *= Math.exp(-dt * 3);
+      io.gust *= Math.exp(-dt * 1.2); io.allKick *= Math.exp(-dt * 3);
+      const shakeF = [cam.rt[0] * io.shakeLat + cam.fw[0] * io.shakeFwd, 0, cam.rt[2] * io.shakeLat + cam.fw[2] * io.shakeFwd];
+      const wind = +val.wind + io.gust;
+      let minX = 1e9, maxX = -1e9; lay.P.forEach(p => { minX = Math.min(minX, p[0]); maxX = Math.max(maxX, p[0]); });
+      // fixed 120 Hz physics
+      sub.acc += dt; let steps = 0;
+      const pal = PALETTES[+val.palette] || PALETTES[0];
+      while (sub.acc >= 1 / 120 && steps < 8) {
+        sub.acc -= 1 / 120; steps++; simT += 1 / 120;
+        for (let i = 0; i < n; i++) {
+          const M = men[i];
+          const nx = maxX > minX ? (M.bx - minX) / (maxX - minX) : 0;
+          let P = danceP(mode, M, b, nx, e) + io.shake * 0.8 + M.kick + io.allKick + 0.25 * io.mic;
+          M.inflate = Math.min(1, M.inflate + 1 / 120 / 1.8);
+          P *= M.inflate;
+          M.P += (P - M.P) * Math.min(1, 18 / 120);
+          stepMan(M, 1 / 120, simT, M.P, wind, shakeF, sau);
+        }
+      }
+      if (steps === 8) sub.acc = 0;
+      for (let i = 0; i < n; i++) {
+        const M = men[i];
+        M.kick *= Math.exp(-dt * 3);
+        M.bx += (M.tx - M.bx) * Math.min(1, dt * 1.5); M.bz += (M.tz - M.bz) * Math.min(1, dt * 1.5);
+        const want = Math.atan2(cam.p[0] - M.bx, cam.p[2] - M.bz) + 0.5 * Math.sin(t * 0.4 + M.seed);
+        let d = want - M.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); M.yaw += d * Math.min(1, dt * 0.8);
+        hairFor(M, t, dt, wind);
+        packMan(i, M, pal);
+      }
+      gl.bindTexture(gl.TEXTURE_2D, rigTex);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, COLS, MAXM, 0, gl.RGBA, gl.UNSIGNED_BYTE, tex);
+      // Camera
+      const every = (+val.autoEvery || 4) * 4;
+      let k = +val.cam ? +val.cam - 1 : [0, 3, 2, 5, 1, 6, 4][(((Math.floor(b / every) + io.camBump) % 7) + 7) % 7];
+      if (+val.cam && io.camBump) { val.cam = (+val.cam - 1 + io.camBump) % 7 + 1; k = +val.cam - 1; io.camBump = 0; io.camChanged = true; }
+      const cut = k !== lastCamKey;
+      if (cut) { if (lastCamKey !== -1 && +val.cam) { io.dragYaw = 0; io.dragPitch = 0; } lastCamKey = k; }
+      const want = camFor(k, t, b, lay.R, n);
+      // drag orbits the camera round its target
+      let dx = want.p[0] - want.g[0], dy = want.p[1] - want.g[1], dz = want.p[2] - want.g[2];
+      const cy = Math.cos(io.dragYaw), sy = Math.sin(io.dragYaw);
+      [dx, dz] = [dx * cy - dz * sy, dx * sy + dz * cy];
+      const hd = Math.hypot(dx, dz), el = clamp(Math.atan2(dy, hd) + io.dragPitch, -0.3, 1.5), rr = Math.hypot(hd, dy);
+      const nh = Math.cos(el) * rr;
+      want.p = [want.g[0] + dx / (hd || 1) * nh, want.g[1] + Math.sin(el) * rr, want.g[2] + dz / (hd || 1) * nh];
+      want.p[1] = Math.max(0.25, want.p[1]);
+      if (!curCam || (cut && !+val.cam)) curCam = { p: want.p.slice(), g: want.g.slice(), fov: want.fov };
+      else {
+        const kk = Math.min(1, dt * (cut ? 2.5 : 4));
+        for (let c = 0; c < 3; c++) { curCam.p[c] += (want.p[c] - curCam.p[c]) * kk; curCam.g[c] += (want.g[c] - curCam.g[c]) * kk; }
+        curCam.fov += (want.fov - curCam.fov) * kk;
+      }
+      cam.p = curCam.p.slice(); cam.g = curCam.g.slice();
+      cam.fov = Math.min(2.2, curCam.fov * (asp < 1 ? 1 + (1 - asp) * 0.9 : 1));   // portrait phones see as wide a crowd
+      if (Math.hypot(cam.p[0] - cam.g[0], cam.p[2] - cam.g[2]) < 0.05) cam.p[2] -= 0.05;   // never look straight down the up axis
+      cam.fw = norm(cam.g[0] - cam.p[0], cam.g[1] - cam.p[1], cam.g[2] - cam.p[2]);
+      cam.rt = norm(-cam.fw[2], 0, cam.fw[0]);   // cross(fw, up)
+      cam.up = [cam.rt[1] * cam.fw[2] - cam.rt[2] * cam.fw[1], cam.rt[2] * cam.fw[0] - cam.rt[0] * cam.fw[2], cam.rt[0] * cam.fw[1] - cam.rt[1] * cam.fw[0]];
+      Object.assign(val, { camX: cam.p[0], camY: cam.p[1], camZ: cam.p[2], tgtX: cam.g[0], tgtY: cam.g[1], tgtZ: cam.g[2], fov: cam.fov });
+      return { cam: CAMS[k], dance: DANCES[mode], visitor: sau.beam > 0.5 };
+    }
+    return { step, puffAt, puffKey, io, rig: { t: rigTex, w: COLS, h: MAXM } };
+  }
+
+  // ---------- Tube Crew page: tap, drag, keys, phone shake, mic, MIDI ----------
+  const hint = document.getElementById('hint');
+  const crew = makeTubeCrew(gl), io = crew.io;
+  imageTex.rig = crew.rig;
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  let motionOn = false, down = null, lastTap = 0;
+  async function askMotion() {
+    try { if (window.DeviceMotionEvent && DeviceMotionEvent.requestPermission) { const r = await DeviceMotionEvent.requestPermission(); motionOn = r === 'granted'; } else motionOn = true; } catch (e) {}
+  }
+  canvas.addEventListener('pointerdown', e => {
+    canvas.setPointerCapture(e.pointerId); hint.style.opacity = 0;
+    if (!motionOn) askMotion();
+    if (!motionAsked) motionAsked = performance.now();
+    down = { x: e.clientX, y: e.clientY, t: performance.now(), moved: false, yaw: io.dragYaw, pitch: io.dragPitch };
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (!down) return;
+    const dx = e.clientX - down.x, dy = e.clientY - down.y;
+    if (Math.hypot(dx, dy) > 8) down.moved = true;
+    if (down.moved) { const s = 4 / Math.min(canvas.clientWidth, canvas.clientHeight); io.dragYaw = down.yaw - dx * s; io.dragPitch = clamp(down.pitch + dy * s * 0.5, -0.6, 1.2); }
+  });
+  canvas.addEventListener('pointerup', e => {
+    if (down && !down.moved && performance.now() - down.t < 350) {
+      const r = canvas.getBoundingClientRect();
+      if (performance.now() - lastTap < 320) io.camBump++;   // double tap: next camera
+      lastTap = performance.now();
+      crew.puffAt(e.clientX - r.left, e.clientY - r.top, canvas.clientWidth, canvas.clientHeight, +val.count);
+    }
+    down = null;
+  });
+  canvas.addEventListener('pointercancel', () => { down = null; });
+  window.addEventListener('keydown', e => {
+    if (e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
+    if (e.key === ' ') { io.allKick = 1; e.preventDefault(); }
+    else if (e.key === 'ArrowLeft') io.gust = -1.2; else if (e.key === 'ArrowRight') io.gust = 1.2;
+    else if (e.key === 's' || e.key === 'S') { io.shake = 1.2; io.shakeLat = (Math.random() - 0.5) * 20; }
+    else if (e.key === 'c' || e.key === 'C') io.camBump++;
+  });
+  // Phone shake. Reads both motion and orientation (whichever the browser gives), and shows a small meter
+  // so it is clear whether readings arrive at all (some app frames block them).
+  let lastAcc = null, lastOri = null, motionSeen = 0, motionAsked = 0, meterLvl = 0;
+  const meter = document.createElement('div');
+  meter.style.cssText = 'position:fixed;left:12px;bottom:calc(14px + env(safe-area-inset-bottom));padding:5px 10px;border-radius:999px;background:rgba(10,8,20,.6);color:#fff;font:600 12px/1.2 system-ui,sans-serif;pointer-events:none;z-index:5;display:none';
+  document.body.appendChild(meter);
+  function shakeIn(ax, ay, az, gain) {
+    const mag = Math.hypot(ax, ay, az);
+    meterLvl = Math.max(meterLvl, Math.min(1, mag / 15));
+    if (mag > 1.5) {
+      io.shake = Math.min(1.6, io.shake + (mag - 1.5) * 0.06 * gain);
+      io.shakeLat = clamp(io.shakeLat + ax * 1.6 * gain, -24, 24); io.shakeFwd = clamp(io.shakeFwd + az * 1.2 * gain, -20, 20);
+      if (mag > 8) io.allKick = Math.max(io.allKick, 0.5);
+      hint.style.opacity = 0;
+    }
+  }
+  window.addEventListener('devicemotion', e => {
+    let a = e.acceleration;
+    if (!a || a.x == null) {   // no gravity-free reading: take the change in the raw one
+      const g = e.accelerationIncludingGravity; if (!g || g.x == null) return;
+      a = lastAcc ? { x: g.x - lastAcc.x, y: g.y - lastAcc.y, z: g.z - lastAcc.z } : { x: 0, y: 0, z: 0 };
+      lastAcc = { x: g.x, y: g.y, z: g.z };
+    }
+    motionSeen = performance.now();
+    shakeIn(a.x || 0, a.y || 0, a.z || 0, 1);
+  });
+  window.addEventListener('deviceorientation', e => {
+    if (e.beta == null) return;
+    const now = performance.now();
+    if (lastOri && now - motionSeen > 500) {   // only when no motion readings: fast tilting counts as shaking
+      const k = 1000 / Math.max(16, now - lastOri.t);
+      let dg = e.gamma - lastOri.g, db = e.beta - lastOri.b;
+      shakeIn(dg * k * 0.05, db * k * 0.05, 0, 1);
+      motionSeen = now - 400;
+    }
+    lastOri = { t: now, g: e.gamma, b: e.beta };
+  });
+  function meterFrame(now, dt) {
+    meterLvl *= Math.exp(-dt * 3);
+    if (!motionAsked) return;
+    meter.style.display = 'block';
+    if (now - motionSeen < 1500) meter.textContent = 'Shake ' + '▮'.repeat(1 + Math.round(meterLvl * 7)).padEnd(8, '▯');
+    else if (now - motionAsked > 2500) meter.textContent = 'No motion readings from this phone here';
+    else meter.textContent = 'Waiting for motion…';
+  }
+
+  // Mic and MIDI, from buttons in the knob panel.
+  let analyser = null, micBuf = null, micAvg = 0.01, micLevel = 0;
+  const box = document.createElement('div'); box.className = 'knob wide';
+  box.innerHTML = '<label>More ways to give them air</label>';
+  const row = document.createElement('div'); row.className = 'seg';
+  const bMotion = document.createElement('button'); bMotion.textContent = 'Phone shake';
+  const bMic = document.createElement('button'); bMic.textContent = 'Microphone';
+  const bMidi = document.createElement('button'); bMidi.textContent = 'MIDI keys';
+  const note = document.createElement('small'); note.style.cssText = 'display:block;margin-top:6px;opacity:.75';
+  note.textContent = 'Tap a dancer to puff it, double-tap for the next camera. Keys: space puffs everyone, arrows blow, S shakes, C cuts.';
+  row.append(bMotion, bMic, bMidi); box.append(row, note); document.getElementById('knobs').prepend(box);
+  bMotion.addEventListener('click', async () => { await askMotion(); bMotion.classList.toggle('on', motionOn); note.textContent = motionOn ? 'Shake the phone: up and down pumps air, side to side sways them.' : 'This browser did not allow motion here.'; });
+  bMic.addEventListener('click', async () => {
+    if (analyser) return;
+    try {
+      const st = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const ac = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = ac.createAnalyser(); analyser.fftSize = 512; micBuf = new Uint8Array(analyser.frequencyBinCount);
+      ac.createMediaStreamSource(st).connect(analyser);
+      bMic.classList.add('on'); note.textContent = 'Listening: kicks and loud hits puff them.';
+    } catch (e) { note.textContent = 'The microphone is not available here.'; }
+  });
+  bMidi.addEventListener('click', async () => {
+    try {
+      const acc = await navigator.requestMIDIAccess();
+      const hook = () => acc.inputs.forEach(inp => { inp.onmidimessage = m => {
+        const [st, d1, d2] = m.data, kind = st & 0xf0;
+        if (kind === 0x90 && d2 > 0) crew.puffKey(d1, d2 / 127, +val.count);
+        else if (kind === 0xb0 && d1 === 1) io.gust = d2 / 127 * 1.5;
+        else if (kind === 0xe0) io.gust = ((d2 << 7 | d1) - 8192) / 8192 * 1.5;
+      }; });
+      hook(); acc.onstatechange = hook;
+      bMidi.classList.add('on'); note.textContent = acc.inputs.size ? 'MIDI on: each key puffs one dancer, mod and pitch strips blow wind.' : 'MIDI on, but no keyboard found yet. Plug one in.';
+    } catch (e) { note.textContent = 'MIDI is not available in this browser.'; }
+  });
+  // ---------- Each frame ----------
+  const label = document.createElement('div');
+  label.setAttribute('aria-live', 'polite');
+  label.style.cssText = 'position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);padding:6px 14px;border-radius:999px;background:rgba(10,8,20,.6);color:#fff;font:600 14px/1.2 system-ui,sans-serif;pointer-events:none;z-index:5;white-space:nowrap;transition:opacity .6s';
+  document.body.appendChild(label);
+  let shownLabel = '', labelAt = 0;
+  let lastT = performance.now(), capped = false;
+  function toyFrame(now) {
+    // A 3D scene: draw at most about a million pixels (the page lowers it further if frames run slow).
+    if (!capped) { capped = true; scale = Math.min(scale, Math.sqrt(1000000 / Math.max(1, canvas.clientWidth * canvas.clientHeight))); }
+    const dt = Math.min(now - lastT, 100) / 1000; lastT = now;
+    if (analyser) {   // mic: kicks and loud hits puff everyone
+      analyser.getByteFrequencyData(micBuf);
+      let s = 0; for (let i = 1; i < 12; i++) s += micBuf[i]; s /= 11 * 255;
+      if (s > micAvg * 1.35 && s > 0.15) io.allKick = Math.max(io.allKick, 0.6 * Math.min(1, s * 1.5));
+      micAvg += (s - micAvg) * Math.min(1, dt * 1.5); io.mic = s;
+    }
+    const r = crew.step(val, dt, (now - beat0) / (60000 / bpm), now / 1000, canvas.clientWidth / Math.max(1, canvas.clientHeight));
+    meterFrame(now, dt);
+    if (io.camChanged) { io.camChanged = false; syncCamButtons(); }
+    // Name the camera and dance when they change.
+    const txt = r.cam + ' · ' + r.dance + (r.visitor ? ' · visitor!' : '');
+    if (txt !== shownLabel) { shownLabel = txt; label.textContent = txt; label.style.opacity = 1; labelAt = now; }
+    if (now - labelAt > 2500) label.style.opacity = 0;
+  }
+  function syncCamButtons() {
+    const seg = document.getElementById('k-cam'); if (!seg) return;
+    seg.querySelectorAll('button').forEach((x, i) => { const on = i === +val.cam; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); });
+  }
+
+  // ---------- Buttons ----------
+  const drawer = document.getElementById('drawer'), tk = document.getElementById('toggleKnobs');
+  tk.addEventListener('click', () => {
+    drawer.hidden = !drawer.hidden;
+    tk.classList.toggle('on', !drawer.hidden);
+    tk.setAttribute('aria-expanded', String(!drawer.hidden));
+  });
+  const sheet = document.getElementById('sheet');
+  document.getElementById('showSource').addEventListener('click', () => { sheet.hidden = false; document.getElementById('closeSheet').focus(); });
+  document.getElementById('closeSheet').addEventListener('click', () => { sheet.hidden = true; });
+  sheet.addEventListener('click', e => { if (e.target === sheet) sheet.hidden = true; });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') sheet.hidden = true; });
+  document.getElementById('copySrc').addEventListener('click', async e => {
+    const b = e.currentTarget;
+    try { await navigator.clipboard.writeText(src); b.textContent = 'Copied'; }
+    catch { const sel = getSelection(), range = document.createRange(); range.selectNodeContents(document.getElementById('srcView')); sel.removeAllRanges(); sel.addRange(range); b.textContent = 'Selected'; }
+    setTimeout(() => { b.textContent = 'Copy'; }, 1500);
+  });
+
+  // ---------- Render loop with adaptive resolution ----------
+  let scale = Math.min(window.devicePixelRatio || 1, 1.5), frame = 0, last = performance.now(), slow = 0;
+  const tickAcc = {};
+  function resize() {
+    const w = Math.max(1, Math.round(canvas.clientWidth * scale)), h = Math.max(1, Math.round(canvas.clientHeight * scale));
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+    sizeTargets();
+  }
+  try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(() => {}); } catch (e) {}
+  const t0 = performance.now();
+  function draw(now) {
+    // A toy can cap its frame rate (const TOY_MAX_FPS in its toy.js) to spare the GPU.
+    if (typeof TOY_MAX_FPS !== 'undefined' && now - last < 1000 / TOY_MAX_FPS - 3) { requestAnimationFrame(draw); return; }
+    const dt = now - last; last = now;
+    if (dt > 40) slow++; else slow = Math.max(0, slow - 1);
+    if (slow > 20 && scale > 0.5) { scale *= 0.8; slow = 0; }
+    resize();
+    toyFrame(now, dt);
+
+    // Beat clock: pulse knob and a "beat" event once per beat.
+    const period = 60000 / bpm;
+    const elapsed = now - beat0;
+    const ph = ((elapsed % period) + period) % period / period;
+    const p = Math.pow(1 - ph, 3);
+    if (!(manual.pulse && now - manual.pulse < 3000)) {
+      val.pulse = reduced ? p * 0.4 : p;
+      if (outputs.pulse) { outputs.pulse.r.value = val.pulse; outputs.pulse.o.textContent = val.pulse.toFixed(2); }
+    }
+    const beatNo = Math.floor(elapsed / period);
+    if (beatNo !== lastBeat) { lastBeat = beatNo; fired.add('beat'); }
+    lamp.style.opacity = 0.2 + 0.8 * p;
+
+    // Ticking events fire at their knob's rate.
+    ticks.forEach(i => {
+      tickAcc[i.NAME] = (tickAcc[i.NAME] || 0) + Math.min(dt, 100) / 1000 * (+val[i.HOUSEPARTY_TICKS] || 0);
+      if (tickAcc[i.NAME] >= 1) { tickAcc[i.NAME] = Math.min(tickAcc[i.NAME] - 1, 1); fired.add(i.NAME); }
+    });
+
+    pickProg();
+    gl.useProgram(prog);
+    gl.uniform1f(uTime(), (now - t0) / 1000);
+    gl.uniform1f(uDelta(), Math.min(dt, 100) / 1000);
+    gl.uniform1i(uFrame(), frame);
+    inputs.forEach(i => {
+      if (i.TYPE === 'image') return;
+      const l = U(i.NAME);
+      const v = i.TYPE === 'event' ? fired.has(i.NAME) : val[i.NAME];
+      if (i.TYPE === 'float') gl.uniform1f(l, v);
+      else if (i.TYPE === 'long' || i.TYPE === 'bool' || i.TYPE === 'event') gl.uniform1i(l, +v);
+      else if (i.TYPE === 'color') gl.uniform4f(l, v[0], v[1], v[2], v[3] ?? 1);
+      else if (i.TYPE === 'point2D') gl.uniform2f(l, v[0], v[1]);
+    });
+    fired.clear();
+
+    passes.forEach((ps, k) => {
+      targets.forEach(name => {
+        const t = T[name];
+        gl.activeTexture(gl.TEXTURE0 + t.unit);
+        gl.bindTexture(gl.TEXTURE_2D, t.read.t);
+        gl.uniform1i(t.uS, t.unit);
+        gl.uniform2f(t.uSz, t.w, t.h);
+      });
+      inputs.filter(i => i.TYPE === 'image').forEach((i, n) => {
+        const it = imageTex[i.NAME]; if (!it) return;
+        gl.activeTexture(gl.TEXTURE0 + targets.length + n);
+        gl.bindTexture(gl.TEXTURE_2D, it.t);
+        gl.uniform1i(U(i.NAME), targets.length + n);
+        gl.uniform2f(U('_' + i.NAME + '_imgSize'), it.w, it.h);
+      });
+      gl.uniform1i(uPass(), k);
+      if (ps.TARGET) {
+        const t = T[ps.TARGET];
+        gl.bindFramebuffer(gl.FRAMEBUFFER, t.write.fb);
+        gl.viewport(0, 0, t.w, t.h);
+        gl.uniform2f(uSize(), t.w, t.h);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        [t.read, t.write] = [t.write, t.read];
+      } else {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.uniform2f(uSize(), canvas.width, canvas.height);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+      }
+    });
+    frame++;
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+})();
+</script>
+
+</body>
+</html>

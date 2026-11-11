@@ -1,0 +1,1202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{margin:0;height:100%;background:#000}</style>
+</head>
+<body>
+<title>Sand Ponder</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+/* Layout: one full-bleed WebGL stage; a floating title chip, two corner buttons, and a knob drawer that slides up from the bottom. Deliberately single-theme: it is a dark dance floor. */
+:root {
+  --floor: #07060c;
+  --glass: rgba(18, 14, 30, 0.78);
+  --line: rgba(255, 255, 255, 0.14);
+  --ink: #f4f1ff;
+  --dim: #b5aecb;
+  --hot: #ff3fb4;
+  --display: "Bungee", "Arial Black", Impact, sans-serif;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--floor);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 15px;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+#stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
+.top {
+  position: fixed; left: 0; right: 0; top: 0;
+  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  pointer-events: none;
+}
+.chip { pointer-events: auto; background: var(--glass); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.chip h1 { margin: 0; font-family: var(--display); font-size: 18px; font-weight: 400; letter-spacing: 0.02em; line-height: 1.1; }
+.chip p { margin: 2px 0 0; font-size: 12px; color: var(--dim); }
+.btns { display: flex; gap: 8px; pointer-events: auto; }
+button {
+  font: 700 13px/1 var(--body); color: var(--ink);
+  background: var(--glass); border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 12px; min-height: 40px; cursor: pointer;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+button:focus-visible, input:focus-visible { outline: 2px solid var(--hot); outline-offset: 2px; }
+button.on { border-color: var(--hot); color: var(--hot); }
+.drawer {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  padding-top: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: var(--glass); border-top: 1px solid var(--line);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  max-height: 55%; overflow-y: auto;
+}
+.drawer-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.drawer-head h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 14px; letter-spacing: 0.06em; }
+.drawer-head span { font-size: 12px; color: var(--dim); }
+.knobs { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 18px; max-width: 900px; }
+.knob { display: grid; grid-template-columns: 92px 1fr auto; align-items: center; gap: 10px; min-width: 0; }
+.knob label { font-size: 13px; font-weight: 700; }
+.knob output { font: 12px var(--mono); color: var(--dim); min-width: 3.5em; text-align: right; font-variant-numeric: tabular-nums; }
+.knob input[type=range] { width: 100%; accent-color: var(--hot); min-width: 0; }.knob input[type=color] { width: 44px; height: 30px; border: 1px solid var(--line); border-radius: 8px; background: none; padding: 0; }
+.knob .note { font-size: 12px; color: var(--dim); grid-column: 2 / 4; }
+.tag { display: inline-block; font: 10px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 6px; border-radius: 6px; border: 1px solid var(--line); color: var(--dim); margin-left: 6px; vertical-align: middle; }
+.tag.music { border-color: var(--hot); color: var(--hot); }
+.beat { display: flex; align-items: center; gap: 10px; grid-column: 1 / -1; padding-top: 4px; border-top: 1px solid var(--line); margin-top: 4px; }
+.beat .bpm { font: 700 20px var(--mono); font-variant-numeric: tabular-nums; min-width: 3ch; }
+.beat .lamp { width: 12px; height: 12px; border-radius: 50%; background: var(--hot); opacity: 0.2; }
+.beat small { color: var(--dim); font-size: 12px; }
+.sheet {
+  position: fixed; inset: 0; display: grid; place-items: center;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  background: rgba(4, 3, 8, 0.72);
+}
+.sheet .card { background: #120e1e; border: 1px solid var(--line); border-radius: 14px; width: min(760px, 100%); max-height: 100%; display: flex; flex-direction: column; min-width: 0; }
+.sheet header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.sheet header h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 15px; }
+.sheet .explain { margin: 0; padding: 10px 14px 0; color: var(--dim); font-size: 13px; max-width: 65ch; }
+.sheet pre { margin: 0; padding: 12px 14px 16px; overflow: auto; font: 12px/1.5 var(--mono); color: var(--ink); white-space: pre; }
+.hint {
+  position: fixed; left: 50%; top: 42%; transform: translate(-50%, -50%);
+  font-family: var(--display); font-size: 15px; letter-spacing: 0.04em; text-align: center;
+  color: var(--ink); text-shadow: 0 0 12px rgba(255, 63, 180, 0.8);
+  pointer-events: none; transition: opacity 0.6s; width: min(90%, 420px);
+}
+.err { position: fixed; inset: auto 16px 50% 16px; background: #2a0c18; border: 1px solid var(--hot); border-radius: 12px; padding: 14px; font-size: 14px; }
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { .hint { transition: none; } }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; grid-column: 2 / 4; }
+.seg button { min-height: 34px; padding: 7px 10px; font-size: 12px; }
+.knob.wide { grid-column: 1 / -1; }
+.knob .act { grid-column: 2 / 4; justify-self: start; }
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { .hint { transition: none; } }
+</style>
+
+<canvas id="stage" aria-label="A falling-sand toy: coloured sand pours from your fingers, piles up in layers and slides when the phone tilts. In the Pondering look every grain is drawn as a curl of fine lines, navy on cream."></canvas>
+
+<div class="top">
+  <div class="chip">
+    <h1>Sand Ponder</h1>
+    <p>An ISF shader toy for House Party</p>
+  </div>
+  <div class="btns">
+    <button id="toggleKnobs" class="on" aria-expanded="true" aria-controls="drawer">Knobs</button>
+    <button id="showSource" aria-haspopup="dialog">ISF file</button>
+  </div>
+</div>
+
+<div class="hint" id="hint">Drag to pour sand. Tilt to slide it.<br>Double-tap to shake</div>
+
+<section class="drawer" id="drawer" aria-label="Knobs">
+  <div class="drawer-head">
+    <h2>KNOBS</h2>
+    <span>Built automatically from the ISF file's header</span>
+  </div>
+  <div class="knobs" id="knobs"></div>
+</section>
+
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden>
+  <div class="card">
+    <header>
+      <h2 id="sheetTitle">sand-ponder.fs</h2>
+      <div class="btns"><button id="copySrc">Copy</button><button id="closeSheet">Close</button></div>
+    </header>
+    <p class="explain">This is the whole visual: a JSON header listing its knobs, then the shader. It's a falling-sand game run on the graphics card. The screen is a grid of grains; each step it is cut into 2x2 blocks, and in each block a grain falls if the cell below is free, or slips off a pile sideways. The blocks shift by one cell every step so sand flows. Tilting the phone turns gravity: each step picks the down or sideways direction at random, weighted by the tilt, so tipped sand slides at an angle. The Pondering look, after the piece "continuous pondering", draws each grain as an overlapping disc of fine curled lines. On the party screen, House Party would turn the same knobs from the music instead of your fingers.</p>
+    <pre id="srcView"></pre>
+  </div>
+</div>
+
+<script id="isf-source" type="x-shader/x-fragment">/*{
+ "DESCRIPTION": "Sand Ponder: a falling-sand toy. Pour coloured sand with your fingers, tilt the phone to make it slide, flip it like an hourglass. The Pondering look draws every grain as a curl of fine lines, after the generative piece \"continuous pondering\".",
+ "CREDIT": "House Party (look after \"continuous pondering\", shared by Jon)",
+ "ISFVSN": "2",
+ "CATEGORIES": [
+  "Generator",
+  "House Party toy"
+ ],
+ "HOUSEPARTY_PRESETS": [
+  {"NAME": "Pondering", "look": 0, "palette": 0, "grain": 6, "onBeat": 1, "colourEvery": 0, "curl": 1.0},
+  {"NAME": "Desert hourglass", "look": 1, "palette": 2, "grain": 4, "speed": 4, "onBeat": 5, "colourEvery": 1, "slip": 0.85},
+  {"NAME": "Sea glass sway", "look": 0, "palette": 5, "grain": 8, "onBeat": 2, "colourEvery": 0, "slip": 0.6, "curl": 1.4},
+  {"NAME": "Midnight curls", "look": 2, "palette": 4, "grain": 8, "onBeat": 3, "colourEvery": 0, "curl": 1.8, "leak": 0.03},
+  {"NAME": "Sunset avalanche", "look": 1, "palette": 3, "grain": 3, "speed": 6, "onBeat": 4, "colourEvery": 0, "pourSize": 0.1, "slip": 1.0, "leak": 0.05}
+ ],
+ "INPUTS": [
+  {"NAME": "preset", "LABEL": "Preset", "TYPE": "long", "VALUES": [0, 1, 2, 3, 4], "LABELS": ["Pondering", "Desert hourglass", "Sea glass sway", "Midnight curls", "Sunset avalanche"], "DEFAULT": 0},
+  {"NAME": "autoPreset", "LABEL": "Next preset", "TYPE": "long", "VALUES": [0, 4, 8, 16], "LABELS": ["Off", "4 bars", "8 bars", "16 bars"], "DEFAULT": 0},
+  {
+   "NAME": "finger1",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ]
+  },
+  {
+   "NAME": "finger2",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ]
+  },
+  {
+   "NAME": "finger3",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ]
+  },
+  {
+   "NAME": "finger4",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ]
+  },
+  {
+   "NAME": "grav",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    0.0,
+    -1.0
+   ],
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "pourColor",
+   "TYPE": "float",
+   "DEFAULT": 0.0625,
+   "MIN": 0.0,
+   "MAX": 1.0,
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "shake",
+   "TYPE": "float",
+   "DEFAULT": 0.0,
+   "MIN": 0.0,
+   "MAX": 1.0,
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "autoAt",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ],
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "seed",
+   "TYPE": "float",
+   "DEFAULT": 0.0,
+   "MIN": 0.0,
+   "MAX": 1000.0,
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "refill",
+   "TYPE": "event"
+  },
+  {
+   "NAME": "empty",
+   "TYPE": "event",
+   "LABEL": "Empty"
+  },
+  {
+   "NAME": "shakeIt",
+   "TYPE": "event",
+   "LABEL": "Shake"
+  },
+  {
+   "NAME": "flip",
+   "TYPE": "event",
+   "LABEL": "Flip"
+  },
+  {
+   "NAME": "look",
+   "LABEL": "Look",
+   "TYPE": "long",
+   "VALUES": [
+    0,
+    1,
+    2
+   ],
+   "LABELS": [
+    "Pondering curls",
+    "Sand art",
+    "Curls at night"
+   ],
+   "DEFAULT": 0
+  },
+  {
+   "NAME": "palette",
+   "LABEL": "Colours",
+   "TYPE": "long",
+   "VALUES": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "LABELS": [
+    "Pondering navy",
+    "Sand art bottle",
+    "Desert",
+    "Sunset",
+    "Neon",
+    "Sea glass"
+   ],
+   "DEFAULT": 0
+  },
+  {
+   "NAME": "tool",
+   "LABEL": "Fingers",
+   "TYPE": "long",
+   "VALUES": [
+    0,
+    1
+   ],
+   "LABELS": [
+    "Pour",
+    "Dig"
+   ],
+   "DEFAULT": 0
+  },
+  {
+   "NAME": "grain",
+   "LABEL": "Grain",
+   "TYPE": "long",
+   "VALUES": [
+    3,
+    4,
+    6,
+    8
+   ],
+   "LABELS": [
+    "Fine",
+    "Medium",
+    "Coarse",
+    "Chunky"
+   ],
+   "DEFAULT": 6
+  },
+  {
+   "NAME": "speed",
+   "LABEL": "Speed",
+   "TYPE": "long",
+   "VALUES": [
+    1,
+    2,
+    3,
+    4,
+    6
+   ],
+   "LABELS": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "6"
+   ],
+   "DEFAULT": 3
+  },
+  {
+   "NAME": "colourEvery",
+   "LABEL": "New colour",
+   "TYPE": "long",
+   "VALUES": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "LABELS": [
+    "Every bar",
+    "Every 2 bars",
+    "Every touch",
+    "Never"
+   ],
+   "DEFAULT": 0
+  },
+  {
+   "NAME": "onBeat",
+   "LABEL": "On the beat",
+   "TYPE": "long",
+   "VALUES": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "LABELS": [
+    "Nothing",
+    "Pour",
+    "Sway",
+    "Flip every 4 bars",
+    "Shake",
+    "Hourglass"
+   ],
+   "DEFAULT": 1
+  },
+  {
+   "NAME": "phoneTilt",
+   "LABEL": "Phone tilt",
+   "TYPE": "long",
+   "VALUES": [
+    0,
+    1
+   ],
+   "LABELS": [
+    "Off",
+    "On"
+   ],
+   "DEFAULT": 1
+  },
+  {
+   "NAME": "phoneShake",
+   "LABEL": "Phone shake",
+   "TYPE": "long",
+   "VALUES": [
+    0,
+    1
+   ],
+   "LABELS": [
+    "Off",
+    "On"
+   ],
+   "DEFAULT": 1
+  },
+  {
+   "NAME": "tilt",
+   "LABEL": "Tilt",
+   "TYPE": "float",
+   "DEFAULT": 0.0,
+   "MIN": -180.0,
+   "MAX": 180.0
+  },
+  {
+   "NAME": "pourSize",
+   "LABEL": "Pour size",
+   "TYPE": "float",
+   "DEFAULT": 0.05,
+   "MIN": 0.015,
+   "MAX": 0.15
+  },
+  {
+   "NAME": "slip",
+   "LABEL": "Slip",
+   "TYPE": "float",
+   "DEFAULT": 0.7,
+   "MIN": 0.1,
+   "MAX": 1.0
+  },
+  {
+   "NAME": "leak",
+   "LABEL": "Leak",
+   "TYPE": "float",
+   "DEFAULT": 0.01,
+   "MIN": 0.0,
+   "MAX": 0.2
+  },
+  {
+   "NAME": "curl",
+   "LABEL": "Curl lines",
+   "TYPE": "float",
+   "DEFAULT": 1.0,
+   "MIN": 0.4,
+   "MAX": 2.0
+  },
+  {
+   "NAME": "pulse",
+   "TYPE": "float",
+   "DEFAULT": 0.0,
+   "MIN": 0.0,
+   "MAX": 1.0
+  }
+ ],
+ "PASSES": [
+  {
+   "TARGET": "sandT",
+   "PERSISTENT": true,
+   "WIDTH": "floor($WIDTH / $grain)",
+   "HEIGHT": "floor($HEIGHT / $grain)"
+  },
+  {
+   "TARGET": "sandT",
+   "PERSISTENT": true,
+   "WIDTH": "floor($WIDTH / $grain)",
+   "HEIGHT": "floor($HEIGHT / $grain)"
+  },
+  {
+   "TARGET": "sandT",
+   "PERSISTENT": true,
+   "WIDTH": "floor($WIDTH / $grain)",
+   "HEIGHT": "floor($HEIGHT / $grain)"
+  },
+  {
+   "TARGET": "sandT",
+   "PERSISTENT": true,
+   "WIDTH": "floor($WIDTH / $grain)",
+   "HEIGHT": "floor($HEIGHT / $grain)"
+  },
+  {
+   "TARGET": "sandT",
+   "PERSISTENT": true,
+   "WIDTH": "floor($WIDTH / $grain)",
+   "HEIGHT": "floor($HEIGHT / $grain)"
+  },
+  {
+   "TARGET": "sandT",
+   "PERSISTENT": true,
+   "WIDTH": "floor($WIDTH / $grain)",
+   "HEIGHT": "floor($HEIGHT / $grain)"
+  },
+  {
+   "TARGET": "sandT",
+   "PERSISTENT": true,
+   "WIDTH": "floor($WIDTH / $grain)",
+   "HEIGHT": "floor($HEIGHT / $grain)"
+  },
+  {}
+ ]
+}*/
+// Sand Ponder. Passes 0-6 keep a grid of grains in sandT (r = grain here, g = grain id, b = colour slot).
+// Pass 0 pours, digs, empties and refills. Passes 1-6 move the sand: a Margolus block automaton
+// (2x2 blocks, offset every step) where a grain falls, or slips off a pile diagonally.
+// Gravity can point anywhere: each step picks the down or the sideways axis at random, weighted
+// by the tilt, so tipped sand slides off at an angle. Pass 7 draws it.
+
+float h21(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+
+vec2 GS() { return IMG_SIZE(sandT); }
+vec4 cellAt(vec2 c) {
+  vec2 g = GS();
+  if (c.x < 0.0 || c.y < 0.0 || c.x >= g.x || c.y >= g.y) return vec4(-1.0);   // the walls
+  return IMG_NORM_PIXEL(sandT, (c + 0.5) / g);
+}
+bool isSand(vec4 s) { return s.r > 0.5; }
+bool isFree(vec4 s) { return s.r > -0.5 && s.r < 0.5; }
+
+// canonical block slot (cx, cy), cy = 0 on the gravity side -> offset in the grid block
+vec2 mp(float cx, float cy, int d) {
+  if (d == 0) return vec2(cx, cy);
+  if (d == 1) return vec2(cx, 1.0 - cy);
+  if (d == 2) return vec2(1.0 - cy, cx);
+  return vec2(cy, cx);
+}
+
+vec3 palCol(float slot) {
+  int p = palette; int k = int(floor(slot * 8.0));
+  if (k > 5) k = k - 6;
+  vec3 c[6];
+  if (p == 0) { c[0]=vec3(.118,.184,.302); c[1]=vec3(.149,.220,.353); c[2]=vec3(.204,.278,.416); c[3]=vec3(.290,.353,.463); c[4]=vec3(.420,.471,.569); c[5]=vec3(.557,.592,.659); }
+  else if (p == 1) { c[0]=vec3(.122,.710,.690); c[1]=vec3(.910,.247,.545); c[2]=vec3(.965,.769,.271); c[3]=vec3(.941,.486,.165); c[4]=vec3(.482,.302,.788); c[5]=vec3(.957,.937,.894); }
+  else if (p == 2) { c[0]=vec3(.851,.659,.424); c[1]=vec3(.710,.463,.247); c[2]=vec3(.549,.290,.184); c[3]=vec3(.910,.812,.627); c[4]=vec3(.431,.231,.165); c[5]=vec3(.788,.573,.353); }
+  else if (p == 3) { c[0]=vec3(1.0,.369,.357); c[1]=vec3(1.0,.624,.263); c[2]=vec3(1.0,.820,.400); c[3]=vec3(.769,.271,.412); c[4]=vec3(.416,.173,.439); c[5]=vec3(.180,.102,.278); }
+  else if (p == 4) { c[0]=vec3(.224,1.0,.078); c[1]=vec3(1.0,.169,.839); c[2]=vec3(0.0,.898,1.0); c[3]=vec3(1.0,.902,0.0); c[4]=vec3(1.0,.420,0.0); c[5]=vec3(.616,.294,1.0); }
+  else { c[0]=vec3(.620,.851,.800); c[1]=vec3(.357,.710,.635); c[2]=vec3(.180,.490,.478); c[3]=vec3(.831,.929,.898); c[4]=vec3(.498,.655,.788); c[5]=vec3(.247,.373,.541); }
+  vec3 r = c[0];
+  for (int i = 1; i < 6; i++) if (i == k) r = c[i];
+  return r;
+}
+
+vec4 grainNew(vec2 c, float slot, float salt) {
+  return vec4(1.0, max(h21(c * 1.7 + salt + seed), 0.004), slot, 1.0);
+}
+
+void main() {
+  vec2 g = GS();
+  if (PASSINDEX == 0) {
+    vec2 c = floor(gl_FragCoord.xy);
+    vec4 s = cellAt(c);
+    float t = mod(float(FRAMEINDEX), 997.0);
+    if (FRAMEINDEX < 2 || refill) {   // layered strata, like a sand-art bottle
+      float y = c.y / g.y, x = c.x / g.x;
+      float top = 0.42 + 0.06 * sin(x * 7.0 + seed) + 0.04 * sin(x * 17.0 + 2.0 * seed);
+      s = vec4(0.0);
+      if (y < top) {
+        float band = floor((y + 0.03 * sin(x * 11.0 + seed * 3.0)) / top * 6.0);
+        s = grainNew(c, (mod(band + floor(seed), 6.0) + 0.5) / 8.0, 3.0);
+      }
+    }
+    if (empty) s = vec4(0.0);
+    // leak: grains lying on the floor wall drain away slowly, so a Wall that pours forever never fills up
+    vec2 fl = abs(grav.x) > abs(grav.y) ? vec2(sign(grav.x), 0.0) : vec2(0.0, sign(grav.y));
+    if (leak > 0.0 && cellAt(c + fl).r < -0.5 && h21(c * 0.37 + t * 0.91) < leak) s = vec4(0.0);
+    float r = pourSize * min(g.x, g.y);
+    vec2 pc = c + 0.5;
+    for (int k = 0; k < 5; k++) {
+      vec2 f = k == 0 ? finger1 : k == 1 ? finger2 : k == 2 ? finger3 : k == 3 ? finger4 : autoAt;
+      if (f.x < 0.0) continue;
+      float d = length(pc - f * g);
+      if (d > r) continue;
+      if (tool == 1 && k < 4) { s = vec4(0.0); continue; }
+      if (s.r < 0.5 && h21(c + t * 1.31 + float(k) * 9.1) < 0.1) s = grainNew(c, pourColor, t);
+    }
+    gl_FragColor = s;
+    return;
+  }
+  if (PASSINDEX <= 6) {
+    vec2 c = floor(gl_FragCoord.xy);
+    if (PASSINDEX > speed) { gl_FragColor = cellAt(c); return; }
+    float fr = mod(float(FRAMEINDEX), 4096.0);
+    float u = h21(vec2(fr * 0.731, float(PASSINDEX) * 3.17));
+    float wx = abs(grav.x), wy = abs(grav.y);
+    int d = (u * (wx + wy) < wx) ? (grav.x > 0.0 ? 2 : 3) : (grav.y > 0.0 ? 1 : 0);
+    float off = mod(fr + float(PASSINDEX), 2.0);
+    vec2 o = floor((c - off) / 2.0) * 2.0 + off;
+    vec2 pA = o + mp(0.0, 1.0, d), pB = o + mp(1.0, 1.0, d), pC = o + mp(0.0, 0.0, d), pD = o + mp(1.0, 0.0, d);
+    vec4 A = cellAt(pA), B = cellAt(pB), C = cellAt(pC), D = cellAt(pD), tmp;
+    float r1 = h21(o + fr * 1.13), r2 = h21(o * 1.31 + fr * 0.71 + 5.0), r3 = h21(o * 0.77 + fr * 2.3 + 9.0);
+    // shake: stir the block about
+    if (shake > 0.0 && r1 < shake) {
+      if (r2 < 0.5) { if (A.r > -0.5 && C.r > -0.5) { tmp = A; A = C; C = tmp; } }
+      else { if (B.r > -0.5 && D.r > -0.5) { tmp = B; B = D; D = tmp; } }
+      if (r3 < 0.5 && A.r > -0.5 && B.r > -0.5) { tmp = A; A = B; B = tmp; }
+    } else {
+      // fall
+      if (isSand(A) && isFree(C) && r1 < 0.97) { tmp = A; A = C; C = tmp; }
+      if (isSand(B) && isFree(D) && r2 < 0.97) { tmp = B; B = D; D = tmp; }
+      // slip off a pile
+      bool aSlip = isSand(A) && !isFree(C) && isFree(D) && isFree(B);
+      bool bSlip = isSand(B) && !isFree(D) && isFree(C) && isFree(A);
+      if (aSlip && bSlip) { if (r3 < 0.5) aSlip = false; else bSlip = false; }
+      if (aSlip && r3 < slip) { tmp = A; A = D; D = tmp; }
+      else if (bSlip && r3 < slip) { tmp = B; B = C; C = tmp; }
+    }
+    vec4 outv = cellAt(c);
+    if (c == pA) outv = A; else if (c == pB) outv = B; else if (c == pC) outv = C; else if (c == pD) outv = D;
+    gl_FragColor = max(outv, vec4(0.0));
+    return;
+  }
+
+  // ---------- draw ----------
+  vec2 p = isf_FragNormCoord * g;
+  vec2 cell = floor(p);
+  float cellPx = RENDERSIZE.x / g.x;
+  bool night = look == 2;
+  vec3 paper = night ? vec3(0.035, 0.035, 0.06) : (look == 0 ? vec3(0.914, 0.882, 0.831) : vec3(0.06, 0.05, 0.08));
+  if (look == 1) {
+    vec4 s = cellAt(cell);
+    vec3 col = paper;
+    if (isSand(s)) {
+      col = palCol(s.b) * (0.86 + 0.26 * s.g);
+      vec2 up = -normalize(grav + vec2(1e-4));
+      if (!isSand(cellAt(cell + floor(up + 0.5)))) col *= 1.12;   // a lit top surface
+    }
+    gl_FragColor = vec4(col, 1.0);
+    return;
+  }
+  // Curls: each grain is a disc of fine concentric lines centred off to one side, so it reads as a
+  // curled stroke. Discs overlap like scales; the grain with the highest rank wins a pixel.
+  float best = -1.0; vec3 ink = paper; float light = 0.0;
+  float lineSp = 2.7 / curl;     // pixels between hairlines
+  for (int j = -2; j <= 2; j++) for (int i = -2; i <= 2; i++) {
+    vec2 q = cell + vec2(float(i), float(j));
+    vec4 s = cellAt(q);
+    if (!isSand(s)) continue;
+    float id = s.g;
+    float rank = fract(id * 13.731);
+    if (rank <= best) continue;
+    vec2 cen = q + 0.5 + (vec2(fract(id * 3.17), fract(id * 7.93)) - 0.5) * 0.55;
+    float rad = 1.55 + 0.8 * fract(id * 5.41) + 0.25 * pulse;
+    float dd = length(p - cen);
+    if (dd > rad) continue;
+    best = rank;
+    float a = id * 6.2832 * 3.0;
+    vec2 c2 = cen + vec2(cos(a), sin(a)) * rad * 0.55;
+    float rp = length(p - c2) * cellPx;
+    float tt = fract(rp / lineSp + id * 7.0);
+    float dist = abs(tt - 0.5) * lineSp;           // px to the nearest hairline
+    float hair = 1.0 - smoothstep(0.12, 0.6, dist);
+    float rim = 1.0 - smoothstep(0.3, 1.0, (rad - dd) * cellPx);
+    light = max(hair * 0.8, rim * 0.9);
+    ink = palCol(s.b);
+  }
+  vec3 lineCol = night ? vec3(0.02) : paper;
+  vec3 col = best < 0.0 ? paper : mix(ink, lineCol, light);
+  if (night && best >= 0.0) col = mix(ink * 1.15, vec3(0.0), light);
+  gl_FragColor = vec4(col, 1.0);
+}
+</script>
+
+<script>
+(() => {
+  const src = document.getElementById('isf-source').textContent.trim();
+  document.getElementById('srcView').textContent = src;
+
+  // ---------- A tiny ISF loader, now with PASSES ----------
+  function parseISF(text) {
+    const m = text.match(/^\s*\/\*\s*(\{[\s\S]*?\})\s*\*\//);
+    if (!m) throw new Error('No ISF header found.');
+    return { meta: JSON.parse(m[1]), body: text.slice(m[0].length) };
+  }
+  const GLSL_TYPE = { float: 'float', bool: 'bool', long: 'int', event: 'bool', color: 'vec4', point2D: 'vec2' };
+
+  const canvas = document.getElementById('stage');
+  const gl = canvas.getContext('webgl', { antialias: false, preserveDrawingBuffer: false });
+  function fail(msg) {
+    const box = document.createElement('div');
+    box.className = 'err';
+    box.textContent = msg;
+    document.body.appendChild(box);
+  }
+  if (!gl) { fail('This browser has WebGL turned off, so the visual cannot draw. Try Chrome or Safari with hardware acceleration on.'); return; }
+
+  const { meta, body } = parseISF(src);
+  const inputs = meta.INPUTS || [];
+  const passes = meta.PASSES && meta.PASSES.length ? meta.PASSES : [{}];
+  const targets = [...new Set(passes.filter(p => p.TARGET).map(p => p.TARGET))];   // several passes may draw the same target in turn
+
+  // ISF hosts rewrite a few helper calls before compiling.
+  const rewritten = body
+    .replace(/IMG_SIZE\(\s*(\w+)\s*\)/g, '_$1_imgSize')
+    .replace(/IMG_NORM_PIXEL\(\s*(\w+)\s*,/g, 'texture2D($1,')
+    .replace(/IMG_PIXEL\(\s*(\w+)\s*,\s*([^)]+)\)/g, 'texture2D($1, ($2) / _$1_imgSize)');
+  const fragHeader = [
+    '#ifdef GL_FRAGMENT_PRECISION_HIGH', 'precision highp float;', '#else', 'precision mediump float;', '#endif',
+    'uniform vec2 RENDERSIZE;', 'uniform float TIME;', 'uniform float TIMEDELTA;', 'uniform int FRAMEINDEX;', 'uniform int PASSINDEX;', 'varying vec2 isf_FragNormCoord;',
+    ...inputs.filter(i => i.TYPE !== 'image').map(i => `uniform ${GLSL_TYPE[i.TYPE] || 'float'} ${i.NAME};`),
+    ...inputs.filter(i => i.TYPE === 'image').map(i => `uniform sampler2D ${i.NAME}; uniform vec2 _${i.NAME}_imgSize;`),
+    ...targets.map(t => `uniform sampler2D ${t}; uniform vec2 _${t}_imgSize;`)
+  ].join('\n');
+  const vert = 'attribute vec2 p; varying vec2 isf_FragNormCoord; void main(){ isf_FragNormCoord = p * 0.5 + 0.5; gl_Position = vec4(p, 0.0, 1.0); }';
+
+  function compile(type, code) {
+    const sh = gl.createShader(type);
+    gl.shaderSource(sh, code);
+    gl.compileShader(sh);
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh));
+    return sh;
+  }
+  function link(fs) {
+    const pr = gl.createProgram();
+    gl.attachShader(pr, compile(gl.VERTEX_SHADER, vert));
+    gl.attachShader(pr, compile(gl.FRAGMENT_SHADER, fs));
+    gl.linkProgram(pr);
+    if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(pr));
+    return pr;
+  }
+  let prog, copyProg;
+  try {
+    prog = link(fragHeader + '\n' + rewritten);
+    // Used to keep a persistent grid's contents when the screen rotates.
+    copyProg = link('precision mediump float; uniform sampler2D src; varying vec2 isf_FragNormCoord; void main(){ gl_FragColor = texture2D(src, isf_FragNormCoord); }');
+  } catch (e) { fail('The shader did not compile: ' + e.message); return; }
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  [prog, copyProg].forEach(pr => {
+    const loc = gl.getAttribLocation(pr, 'p');
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  });
+  gl.useProgram(prog);
+  // Uniform locations, looked up once per program.
+  const ulocs = new Map();
+  const U = n => { let m = ulocs.get(prog); if (!m) ulocs.set(prog, m = {}); if (!(n in m)) m[n] = gl.getUniformLocation(prog, n); return m[n]; };
+  // HOUSEPARTY_VARIANT (opt-in): names a long input, e.g. "scene". The page then also compiles one program per
+  // value of that input, with "#define HP_VARIANT <value>" in front, and draws with the one for the current value.
+  // The shader stays one source; with HP_VARIANT defined it can make that input a constant, so the compiler drops
+  // every other scene's code and each program is small and fast. Hosts without this (the rack, other ISF apps)
+  // just compile the whole shader as before. Variants compile in the background, one every few frames.
+  const variantIn = meta.HOUSEPARTY_VARIANT && inputs.find(i => i.NAME === meta.HOUSEPARTY_VARIANT);
+  const fullProg = prog, variants = new Map();
+  function variantProg(v, build) {
+    if (variants.has(v)) return variants.get(v);
+    if (!build) return null;
+    let pr = null;
+    try {
+      pr = link(fragHeader + '\n#define HP_VARIANT ' + (v | 0) + '\n' + rewritten);
+      const loc = gl.getAttribLocation(pr, 'p');
+      gl.enableVertexAttribArray(loc);
+      gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    } catch (e) { pr = fullProg; }
+    variants.set(v, pr);
+    return pr;
+  }
+  let variantTick = 0;
+  function pickProg() {
+    if (!variantIn) return;
+    const v = +val[variantIn.NAME] | 0;
+    // the one needed now: build it if missing (a short hitch once); otherwise warm up one other every 8 frames
+    prog = variantProg(v, true) || fullProg;
+    if (++variantTick % 8 === 0) {
+      const todo = (variantIn.VALUES || []).find(x => !variants.has(x));
+      if (todo !== undefined) variantProg(todo, true);
+    }
+  }
+  const uTime = () => U('TIME'), uDelta = () => U('TIMEDELTA'), uSize = () => U('RENDERSIZE'), uFrame = () => U('FRAMEINDEX'), uPass = () => U('PASSINDEX');
+
+  // ---------- Render targets (ping-pong pairs, so a pass can read last frame) ----------
+  // ISF "FLOAT": true on a pass asks for a half-float target (needed by simulations); 8-bit when the device can't.
+  const halfExt = gl.getExtension('OES_texture_half_float');
+  const halfLinear = !!gl.getExtension('OES_texture_half_float_linear');
+  gl.getExtension('EXT_color_buffer_half_float');
+  let halfOK = !!halfExt;
+  function makeTex(w, h, float) {
+    const t = gl.createTexture();
+    const fb = gl.createFramebuffer();
+    const useHalf = float && halfOK;
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, useHalf ? halfExt.HALF_FLOAT_OES : gl.UNSIGNED_BYTE, null);
+    const filt = useHalf && !halfLinear ? gl.NEAREST : gl.LINEAR;
+    [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER].forEach(k => gl.texParameteri(gl.TEXTURE_2D, k, filt));
+    [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T].forEach(k => gl.texParameteri(gl.TEXTURE_2D, k, gl.CLAMP_TO_EDGE));
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+    if (useHalf && gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
+      halfOK = false; gl.deleteFramebuffer(fb); gl.deleteTexture(t); return makeTex(w, h, false);
+    }
+    gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+    return { t, fb };
+  }
+  const T = {};
+  targets.forEach((name, k) => { T[name] = { w: 0, h: 0, read: null, write: null, unit: k, uS: U(name), uSz: U('_' + name + '_imgSize') }; });
+
+  // WIDTH/HEIGHT expressions use $WIDTH/$HEIGHT in CSS pixels, so the grid stays the same
+  // when the page lowers its drawing resolution to keep up on a slow phone.
+  function evalSize(expr, W, H) {
+    if (expr === undefined) return null;
+    const js = String(expr).replace(/\$WIDTH/g, W).replace(/\$HEIGHT/g, H)
+      .replace(/\$(\w+)/g, (_, n) => +val[n] || 0).replace(/\b(floor|ceil|round|max|min|abs|pow|sqrt)\b/g, 'Math.$1');
+    if (!/^[\d\s.+\-*/(),Math.a-z]*$/.test(js)) return null;
+    return Math.max(1, Math.round(Function('return (' + js + ')')()));
+  }
+  function sizeTargets() {
+    const W = canvas.clientWidth, H = canvas.clientHeight;
+    passes.forEach(p => {
+      if (!p.TARGET) return;
+      const t = T[p.TARGET];
+      const w = evalSize(p.WIDTH, W, H) || canvas.width, h = evalSize(p.HEIGHT, W, H) || canvas.height;
+      if (w === t.w && h === t.h) return;
+      const old = t.read;
+      const fl = passes.some(q => q.TARGET === p.TARGET && q.FLOAT);
+      t.read = makeTex(w, h, fl); t.write = makeTex(w, h, fl); t.w = w; t.h = h;
+      if (old && p.PERSISTENT) {   // stretch the old grid into the new one
+        gl.useProgram(copyProg);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, t.read.fb);
+        gl.viewport(0, 0, w, h);
+        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, old.t);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        gl.useProgram(prog);
+      }
+    });
+  }
+
+  // ---------- Knob values, one per input ----------
+  const reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const val = {};
+  inputs.forEach(i => { val[i.NAME] = Array.isArray(i.DEFAULT) ? i.DEFAULT.slice() : (i.DEFAULT ?? (i.TYPE === 'event' ? false : 0)); });
+  const TOUCH_NOTE = "Drag pours (or digs); double-tap shakes; tilt the phone to slide (Phone tilt / Phone shake switch the sensors)";
+  if (reduced) { val.onBeat = 0; }
+
+  // House Party extension (ignored by other ISF hosts): an event marked HOUSEPARTY_TICKS
+  // gets no control; the host fires it as many times a second as the named knob says.
+  const ticks = inputs.filter(i => i.HOUSEPARTY_TICKS);
+  // Image inputs: the toy's own script fills imageTex[name] = { t, w, h } (for example, text drawn on a canvas).
+  const imageTex = {};
+  const MUSIC = new Set(['pulse', 'beat']);   // turned by the beat clock here, by the bridge at a party
+  const fired = new Set();                    // events to send as true on the next frame only
+
+  // ---------- Build controls from the header ----------
+  const knobs = document.getElementById('knobs');
+  const outputs = {};
+  const manual = {};
+  const pts = inputs.filter(x => x.TYPE === 'point2D' && /^finger\d$/.test(x.NAME));
+  inputs.forEach(i => {
+    if (i.TYPE === 'image' || i.HOUSEPARTY_HIDDEN || i.HOUSEPARTY_TICKS || (i.TYPE === 'event' && (MUSIC.has(i.NAME) || !i.LABEL))) return;   // unlabelled events are fired by the page itself
+    if (i.TYPE === 'point2D' && pts[0] !== i) return;   // one row for all fingers; finger speeds get none
+    const row = document.createElement('div');
+    row.className = 'knob';
+    const id = 'k-' + i.NAME;
+    const lab = document.createElement('label');
+    lab.htmlFor = id;
+    lab.textContent = i.LABEL || i.NAME;
+    row.appendChild(lab);
+    if (i.TYPE === 'float') {
+      const r = document.createElement('input');
+      r.type = 'range'; r.id = id; r.min = i.MIN; r.max = i.MAX; r.step = (i.MAX - i.MIN) / 200; r.value = val[i.NAME];
+      const o = document.createElement('output');
+      o.htmlFor = id; o.textContent = (+r.value).toFixed(i.MAX - i.MIN < 0.2 ? 3 : 2);
+      outputs[i.NAME] = { r, o };
+      // A knob that runs from negative to positive gets a centre mark and snaps to 0 near the middle.
+      const bipolar = i.MIN < 0 && i.MAX > 0;
+      if (bipolar) {
+        const dl = document.createElement('datalist');
+        dl.id = id + '-ticks'; dl.innerHTML = '<option value="0"></option>';
+        row.appendChild(dl); r.setAttribute('list', dl.id);
+      }
+      r.addEventListener('input', () => {
+        let v = +r.value;
+        if (bipolar && Math.abs(v) < (i.MAX - i.MIN) * 0.03) { v = 0; r.value = 0; }
+        val[i.NAME] = v; o.textContent = v.toFixed(2); manual[i.NAME] = performance.now();
+      });
+      row.append(r, o);
+      if (MUSIC.has(i.NAME)) lab.insertAdjacentHTML('beforeend', '<span class="tag music">beat</span>');
+    } else if (i.TYPE === 'long' && (i.VALUES || []).length > 8) {
+      // A long pick-one list (more than 8 choices) becomes a dropdown.
+      const sel = document.createElement('select');
+      sel.id = id;
+      sel.style.cssText = 'font:inherit;padding:8px 10px;border-radius:10px;background:#1b1b24;color:inherit;border:1px solid #3a3a48;max-width:100%';
+      (i.VALUES || []).forEach((v, k) => { const o = document.createElement('option'); o.value = v; o.textContent = (i.LABELS || [])[k] ?? v; o.selected = v === val[i.NAME]; sel.appendChild(o); });
+      sel.addEventListener('change', () => { val[i.NAME] = +sel.value; });
+      row.appendChild(sel);
+    } else if (i.TYPE === 'long') {
+      // A pick-one input becomes a row of buttons.
+      row.classList.add('wide');
+      const seg = document.createElement('div');
+      seg.className = 'seg'; seg.id = id; seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', i.LABEL || i.NAME);
+      lab.removeAttribute('for');
+      (i.VALUES || []).forEach((v, k) => {
+        const b = document.createElement('button');
+        b.textContent = (i.LABELS || [])[k] ?? v;
+        b.setAttribute('aria-pressed', String(v === val[i.NAME]));
+        b.classList.toggle('on', v === val[i.NAME]);
+        b.addEventListener('click', () => {
+          val[i.NAME] = v;
+          seg.querySelectorAll('button').forEach(x => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); });
+        });
+        seg.appendChild(b);
+      });
+      row.appendChild(seg);
+    } else if (i.TYPE === 'event') {
+      const b = document.createElement('button');
+      b.className = 'act'; b.id = id; b.textContent = i.LABEL || i.NAME;
+      lab.textContent = ''; lab.setAttribute('aria-hidden', 'true');
+      b.addEventListener('click', () => fired.add(i.NAME));
+      row.appendChild(b);
+    } else if (i.TYPE === 'point2D') {
+      lab.textContent = pts.length > 1 ? 'Fingers' : (i.LABEL || i.NAME);
+      lab.insertAdjacentHTML('beforeend', '<span class="tag">touch</span>');
+      const n = document.createElement('span');
+      n.className = 'note'; n.id = id;
+      n.textContent = TOUCH_NOTE.replace('{n}', pts.length);
+      row.append(n);
+    }
+    knobs.appendChild(row);
+  });
+
+  // Beat clock: tap tempo, starts at 124 BPM.
+  const beatRow = document.createElement('div');
+  beatRow.className = 'beat';
+  beatRow.innerHTML = '<span class="lamp" id="lamp"></span><span class="bpm" id="bpm">124</span><small>BPM</small><button id="tap">Tap tempo</button><button id="half">½</button><button id="dbl">×2</button><small id="tapNote">Tap 4 times on the beat</small>';
+  knobs.appendChild(beatRow);
+  let bpm = 124, beat0 = performance.now(), taps = [], lastBeat = -1;
+  const bpmEl = document.getElementById('bpm'), lamp = document.getElementById('lamp');
+  const setBpm = b => { bpm = Math.min(200, Math.max(60, b)); bpmEl.textContent = Math.round(bpm); };
+  document.getElementById('tap').addEventListener('click', () => {
+    const t = performance.now();
+    taps = taps.filter(x => t - x < 2500); taps.push(t);
+    if (taps.length >= 2) {
+      const gaps = taps.slice(1).map((x, k) => x - taps[k]);
+      setBpm(60000 / (gaps.reduce((a, b) => a + b, 0) / gaps.length));
+    }
+    beat0 = t; lastBeat = -1;
+  });
+  document.getElementById('half').addEventListener('click', () => setBpm(bpm / 2));
+  document.getElementById('dbl').addEventListener('click', () => setBpm(bpm * 2));
+
+  // ---------- Sand Ponder: drag pours (or digs), double-tap shakes, tilt the phone to slide the sand ----------
+  const hint = document.getElementById('hint');
+  const SLOTS = 4;
+  const fingers = new Map();
+  let lastTap = null, colourK = Math.floor(Math.random() * 6), angle = 0, angleTo = 0, phoneG = null, shakeAmt = 0;
+  val.seed = Math.random() * 100;
+  const toPoint = e => { const r = canvas.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, 1 - (e.clientY - r.top) / r.height]; };
+  const freeSlot = () => { const used = new Set([...fingers.values()].map(f => f.slot)); for (let s = 1; s <= SLOTS; s++) if (!used.has(s)) return s; return 0; };
+  const nextColour = () => { colourK = (colourK + 1 + Math.floor(Math.random() * 2)) % 6; };
+  let motionAsked = false;
+  async function askMotion() {
+    motionAsked = true;
+    try { if (window.DeviceMotionEvent && DeviceMotionEvent.requestPermission) await DeviceMotionEvent.requestPermission(); } catch (e) {}
+  }
+  canvas.addEventListener('pointerdown', e => {
+    e.preventDefault(); canvas.setPointerCapture(e.pointerId); hint.style.opacity = 0;
+    if (!motionAsked) askMotion();
+    const [x, y] = toPoint(e), now = performance.now();
+    if (lastTap && now - lastTap.t < 330 && Math.hypot(x - lastTap.x, y - lastTap.y) < 0.08) { shakeAmt = Math.max(shakeAmt, 0.55); lastTap = null; }
+    else lastTap = { t: now, x, y };
+    if (val.colourEvery === 2) nextColour();
+    const slot = freeSlot(); if (!slot) return;
+    fingers.set(e.pointerId, { slot, x, y });
+  });
+  canvas.addEventListener('pointermove', e => { const f = fingers.get(e.pointerId); if (!f) return; [f.x, f.y] = toPoint(e); });
+  const up = e => fingers.delete(e.pointerId);
+  canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+  // Phone tilt: gravity on screen is minus the accelerometer's x and y (Android axes). A big jolt shakes.
+  let lastJ = null, motionSeen = 0;
+  // Sensor light: shows whether motion readings arrive at all (an app's frame can block them).
+  const light = document.createElement('div');
+  light.style.cssText = 'position:fixed;left:12px;bottom:calc(14px + env(safe-area-inset-bottom));padding:5px 10px;border-radius:999px;background:rgba(10,8,20,.6);color:#fff;font:600 12px/1.2 system-ui,sans-serif;pointer-events:none;z-index:5';
+  document.body.appendChild(light);
+  setInterval(() => {
+    const on = val.phoneTilt || val.phoneShake;
+    light.style.display = on ? '' : 'none';
+    const live = performance.now() - motionSeen < 1500;
+    light.textContent = live ? '\u25CF Sensors live' : motionAsked ? '\u25CB No sensor readings here' : '\u25CB Tap to start sensors';
+    light.style.color = live ? '#8fffb0' : '#ffd38f';
+  }, 400);
+  window.addEventListener('devicemotion', e => {
+    const g = e.accelerationIncludingGravity; if (!g || g.x == null) return;
+    motionSeen = performance.now();
+    const ang = (screen.orientation && screen.orientation.angle) || window.orientation || 0, a = -ang * Math.PI / 180;
+    let gx = -g.x, gy = -g.y;
+    [gx, gy] = [gx * Math.cos(a) - gy * Math.sin(a), gx * Math.sin(a) + gy * Math.cos(a)];
+    const m = Math.hypot(gx, gy);
+    phoneG = m > 2.5 ? [gx / m, gy / m] : phoneG;   // lying flat: keep the last direction
+    if (lastJ && val.phoneShake) { const j = Math.hypot(g.x - lastJ.x, g.y - lastJ.y, (g.z || 0) - (lastJ.z || 0)); if (j > 9) shakeAmt = Math.min(0.8, shakeAmt + j * 0.02); }
+    lastJ = { x: g.x, y: g.y, z: g.z };
+  });
+  window.addEventListener('keydown', e => {
+    if (e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
+    if (e.key === 'ArrowLeft') angleTo -= 30; else if (e.key === 'ArrowRight') angleTo += 30;
+    else if (e.key === 's' || e.key === 'S') shakeAmt = 0.6; else if (e.key === 'f' || e.key === 'F') angleTo += 180;
+  });
+  // On the beat: 1 pour a stream from a wandering spot up top, 2 sway, 3 flip every 4 bars, 4 shake every bar, 5 hourglass (a slow turn every 4 bars)
+  let lastBn = null, autoUntil = 0, autoX = 0.5, sway = 0;
+  function onBeat(bn, now) {
+    if (val.colourEvery === 0 && bn % 4 === 0) nextColour();
+    if (val.colourEvery === 1 && bn % 8 === 0) nextColour();
+    if (reduced) return;
+    const m = val.onBeat;
+    if (m === 1) { autoUntil = now + 0.6 * 60000 / bpm; autoX = Math.min(0.9, Math.max(0.1, autoX + (Math.random() - 0.5) * 0.3)); }
+    if (m === 3 && bn % 16 === 0) angleTo += 180;
+    if (m === 4 && bn % 4 === 0) shakeAmt = Math.max(shakeAmt, 0.45);
+    if (m === 5 && bn % 16 === 0) angleTo += 180;
+  }
+  let lastT = performance.now();
+  function toyFrame(now) {
+    const dt = Math.min(now - lastT, 100) / 1000; lastT = now;
+    for (let k = 1; k <= SLOTS; k++) val['finger' + k] = [-1, -1];
+    for (const f of fingers.values()) val['finger' + f.slot] = [f.x, f.y];
+    if (fired.has('flip')) angleTo += 180;
+    if (fired.has('shakeIt')) shakeAmt = Math.max(shakeAmt, 0.6);
+    const bn = Math.floor((now - beat0) / (60000 / bpm));
+    if (bn !== lastBn) { lastBn = bn; onBeat(bn, now); }
+    // turn toward the target angle: snappy for a flip, slow (one bar) for the hourglass
+    const rate = val.onBeat === 5 ? 180 / (4 * 60 / bpm) : 600;
+    const dA = angleTo - angle; angle += Math.sign(dA) * Math.min(Math.abs(dA), rate * dt);
+    sway = val.onBeat === 2 && !reduced ? 35 * Math.sin((now - beat0) / (60000 / bpm) * Math.PI / 4) : sway * Math.exp(-dt * 2);
+    const base = (val.phoneTilt && phoneG) || [0, -1];
+    const a = (val.tilt + angle + sway) * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a);
+    val.grav = [base[0] * ca - base[1] * sa, base[0] * sa + base[1] * ca];
+    // the auto pourer sits on the side away from gravity
+    if (now < autoUntil) {
+      const gx = val.grav[0], gy = val.grav[1];
+      const along = autoX - 0.5;
+      val.autoAt = [0.5 - gx * 0.42 + (-gy) * along, 0.5 - gy * 0.42 + gx * along];
+    } else val.autoAt = [-1, -1];
+    val.shake = shakeAmt; shakeAmt *= Math.exp(-dt * 3); if (shakeAmt < 0.02) shakeAmt = 0;
+    val.pourColor = (colourK + 0.5) / 8;
+  }
+  // Picking the Sand art look swaps the navy palette for the bright bottle colours (and back), unless you chose another.
+  let lastLook = val.look;
+  setInterval(() => {
+    if (val.look === lastLook) return;
+    const to = val.look === 1 && val.palette === 0 ? 1 : val.look !== 1 && val.palette === 1 ? 0 : null;
+    lastLook = val.look;
+    if (to === null) return;
+    val.palette = to;
+    const seg = document.getElementById('k-palette');
+    if (seg) seg.querySelectorAll('button').forEach((b, k) => { const on = k === to; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+  }, 150);
+
+  // ---------- Presets from the header (HOUSEPARTY_PRESETS) ----------
+  // Picking a preset sets every look-and-motion knob at once: the ones it names, and the rest back to their
+  // defaults. "Next preset" steps through them on the bar so the toy can play a set on its own. Knobs that
+  // belong to the person holding the phone (sensors, finger tool, where they dragged) are left alone.
+  const HP_PRESETS = meta.HOUSEPARTY_PRESETS || [];
+  const HP_KEEP = new Set(['preset', 'autoPreset', 'pulse', 'phoneTilt', 'phoneShake', 'tool', 'center']);
+  const HP_K0 = {};
+  inputs.forEach(i => { if (!i.HOUSEPARTY_HIDDEN && !HP_KEEP.has(i.NAME) && (i.TYPE === 'float' || i.TYPE === 'long' || i.TYPE === 'bool')) HP_K0[i.NAME] = i.DEFAULT; });
+  const hpLabel = document.createElement('div');
+  hpLabel.setAttribute('aria-live', 'polite');
+  hpLabel.style.cssText = 'position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);padding:6px 14px;border-radius:999px;background:rgba(10,8,20,.6);color:#fff;font:600 14px/1.2 system-ui,sans-serif;pointer-events:none;z-index:5;white-space:nowrap;transition:opacity .5s;opacity:0';
+  document.body.appendChild(hpLabel);
+  let hpShown = -1, hpBase;
+  function hpSync() {
+    inputs.forEach(inp => {
+      const o = outputs[inp.NAME];
+      if (o && o.r) { o.r.value = val[inp.NAME]; o.o.textContent = (+val[inp.NAME]).toFixed(2); return; }
+      const el = inp.TYPE === 'long' && document.getElementById('k-' + inp.NAME);
+      if (el && el.tagName === 'SELECT') { el.value = val[inp.NAME]; return; }
+      if (el) el.querySelectorAll('button').forEach((bt, k) => { const on = inp.VALUES[k] === val[inp.NAME]; bt.classList.toggle('on', on); bt.setAttribute('aria-pressed', String(on)); });
+    });
+  }
+  function hpPresetStep(now) {
+    if (!HP_PRESETS.length) return;
+    const b = (now - beat0) / (60000 / bpm);
+    const every = (+val.autoPreset || 0) * 4;   // autoPreset is in bars
+    if (every > 0) {
+      const n = Math.floor(b / every);
+      if (hpBase === undefined) hpBase = (+val.preset | 0) - n;
+      val.preset = (((hpBase + n) % HP_PRESETS.length) + HP_PRESETS.length) % HP_PRESETS.length;
+    } else hpBase = undefined;
+    if ((+val.preset | 0) === hpShown) return;
+    hpShown = +val.preset | 0;
+    if (every > 0) hpBase = hpShown - Math.floor(b / every);
+    const p = Object.assign({}, HP_PRESETS[hpShown] || HP_PRESETS[0]); delete p.NAME;
+    Object.assign(val, HP_K0, p);
+    hpSync();
+    hpLabel.textContent = (HP_PRESETS[hpShown] || {}).NAME || ''; hpLabel.style.opacity = 1;
+    clearTimeout(hpLabel._t); hpLabel._t = setTimeout(() => { hpLabel.style.opacity = 0; }, 1800);
+  }
+
+  // ---------- Buttons ----------
+  const drawer = document.getElementById('drawer'), tk = document.getElementById('toggleKnobs');
+  tk.addEventListener('click', () => {
+    drawer.hidden = !drawer.hidden;
+    tk.classList.toggle('on', !drawer.hidden);
+    tk.setAttribute('aria-expanded', String(!drawer.hidden));
+  });
+  const sheet = document.getElementById('sheet');
+  document.getElementById('showSource').addEventListener('click', () => { sheet.hidden = false; document.getElementById('closeSheet').focus(); });
+  document.getElementById('closeSheet').addEventListener('click', () => { sheet.hidden = true; });
+  sheet.addEventListener('click', e => { if (e.target === sheet) sheet.hidden = true; });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') sheet.hidden = true; });
+  document.getElementById('copySrc').addEventListener('click', async e => {
+    const b = e.currentTarget;
+    try { await navigator.clipboard.writeText(src); b.textContent = 'Copied'; }
+    catch { const sel = getSelection(), range = document.createRange(); range.selectNodeContents(document.getElementById('srcView')); sel.removeAllRanges(); sel.addRange(range); b.textContent = 'Selected'; }
+    setTimeout(() => { b.textContent = 'Copy'; }, 1500);
+  });
+
+  // ---------- Render loop with adaptive resolution ----------
+  let scale = Math.min(window.devicePixelRatio || 1, 1.5), frame = 0, last = performance.now(), slow = 0;
+  const tickAcc = {};
+  function resize() {
+    const w = Math.max(1, Math.round(canvas.clientWidth * scale)), h = Math.max(1, Math.round(canvas.clientHeight * scale));
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+    sizeTargets();
+  }
+  try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(() => {}); } catch (e) {}
+  const t0 = performance.now();
+  function draw(now) {
+    // A toy can cap its frame rate (const TOY_MAX_FPS in its toy.js) to spare the GPU.
+    if (typeof TOY_MAX_FPS !== 'undefined' && now - last < 1000 / TOY_MAX_FPS - 3) { requestAnimationFrame(draw); return; }
+    const dt = now - last; last = now;
+    if (dt > 40) slow++; else slow = Math.max(0, slow - 1);
+    if (slow > 20 && scale > 0.5) { scale *= 0.8; slow = 0; }
+    resize();
+    if (typeof hpPresetStep === 'function') hpPresetStep(now);
+    toyFrame(now, dt);
+
+    // Beat clock: pulse knob and a "beat" event once per beat.
+    const period = 60000 / bpm;
+    const elapsed = now - beat0;
+    const ph = ((elapsed % period) + period) % period / period;
+    const p = Math.pow(1 - ph, 3);
+    if (!(manual.pulse && now - manual.pulse < 3000)) {
+      val.pulse = reduced ? p * 0.4 : p;
+      if (outputs.pulse) { outputs.pulse.r.value = val.pulse; outputs.pulse.o.textContent = val.pulse.toFixed(2); }
+    }
+    const beatNo = Math.floor(elapsed / period);
+    if (beatNo !== lastBeat) { lastBeat = beatNo; fired.add('beat'); }
+    lamp.style.opacity = 0.2 + 0.8 * p;
+
+    // Ticking events fire at their knob's rate.
+    ticks.forEach(i => {
+      tickAcc[i.NAME] = (tickAcc[i.NAME] || 0) + Math.min(dt, 100) / 1000 * (+val[i.HOUSEPARTY_TICKS] || 0);
+      if (tickAcc[i.NAME] >= 1) { tickAcc[i.NAME] = Math.min(tickAcc[i.NAME] - 1, 1); fired.add(i.NAME); }
+    });
+
+    pickProg();
+    gl.useProgram(prog);
+    gl.uniform1f(uTime(), (now - t0) / 1000);
+    gl.uniform1f(uDelta(), Math.min(dt, 100) / 1000);
+    gl.uniform1i(uFrame(), frame);
+    inputs.forEach(i => {
+      if (i.TYPE === 'image') return;
+      const l = U(i.NAME);
+      const v = i.TYPE === 'event' ? fired.has(i.NAME) : val[i.NAME];
+      if (i.TYPE === 'float') gl.uniform1f(l, v);
+      else if (i.TYPE === 'long' || i.TYPE === 'bool' || i.TYPE === 'event') gl.uniform1i(l, +v);
+      else if (i.TYPE === 'color') gl.uniform4f(l, v[0], v[1], v[2], v[3] ?? 1);
+      else if (i.TYPE === 'point2D') gl.uniform2f(l, v[0], v[1]);
+    });
+    fired.clear();
+
+    passes.forEach((ps, k) => {
+      targets.forEach(name => {
+        const t = T[name];
+        gl.activeTexture(gl.TEXTURE0 + t.unit);
+        gl.bindTexture(gl.TEXTURE_2D, t.read.t);
+        gl.uniform1i(t.uS, t.unit);
+        gl.uniform2f(t.uSz, t.w, t.h);
+      });
+      inputs.filter(i => i.TYPE === 'image').forEach((i, n) => {
+        const it = imageTex[i.NAME]; if (!it) return;
+        gl.activeTexture(gl.TEXTURE0 + targets.length + n);
+        gl.bindTexture(gl.TEXTURE_2D, it.t);
+        gl.uniform1i(U(i.NAME), targets.length + n);
+        gl.uniform2f(U('_' + i.NAME + '_imgSize'), it.w, it.h);
+      });
+      gl.uniform1i(uPass(), k);
+      if (ps.TARGET) {
+        const t = T[ps.TARGET];
+        gl.bindFramebuffer(gl.FRAMEBUFFER, t.write.fb);
+        gl.viewport(0, 0, t.w, t.h);
+        gl.uniform2f(uSize(), t.w, t.h);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        [t.read, t.write] = [t.write, t.read];
+      } else {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.uniform2f(uSize(), canvas.width, canvas.height);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+      }
+    });
+    frame++;
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+})();
+</script>
+
+</body>
+</html>
