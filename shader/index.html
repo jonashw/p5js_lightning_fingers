@@ -1,0 +1,1015 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="../favicon-32x32.png">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>html,body{margin:0;height:100%;background:#000;}</style>
+<title>Lightning Fingers</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+/* Kids' tablet mode: nothing on screen but the toy. Grown-ups add #knobs to the address. */
+body:not(.grownup) .top, body:not(.grownup) .drawer, body:not(.grownup) .hint { display: none !important; }
+html, body { overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+body:not(.grownup) #stage { cursor: default; }
+</style>
+<meta name="theme-color" content="#000000">
+<style>
+/* Layout: one full-bleed WebGL stage; a floating title chip, two corner buttons, and a knob drawer that slides up from the bottom. Deliberately single-theme: it is a dark dance floor. */
+:root {
+  --floor: #07060c;
+  --glass: rgba(18, 14, 30, 0.78);
+  --line: rgba(255, 255, 255, 0.14);
+  --ink: #f4f1ff;
+  --dim: #b5aecb;
+  --hot: #ff3fb4;
+  --display: "Bungee", "Arial Black", Impact, sans-serif;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--floor);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 15px;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+#stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
+.top {
+  position: fixed; left: 0; right: 0; top: 0;
+  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  pointer-events: none;
+}
+.chip { pointer-events: auto; background: var(--glass); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.chip h1 { margin: 0; font-family: var(--display); font-size: 18px; font-weight: 400; letter-spacing: 0.02em; line-height: 1.1; }
+.chip p { margin: 2px 0 0; font-size: 12px; color: var(--dim); }
+.btns { display: flex; gap: 8px; pointer-events: auto; }
+button {
+  font: 700 13px/1 var(--body); color: var(--ink);
+  background: var(--glass); border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 12px; min-height: 40px; cursor: pointer;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+button:focus-visible, input:focus-visible { outline: 2px solid var(--hot); outline-offset: 2px; }
+button.on { border-color: var(--hot); color: var(--hot); }
+.drawer {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  padding-top: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: var(--glass); border-top: 1px solid var(--line);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  max-height: 55%; overflow-y: auto;
+}
+.drawer-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.drawer-head h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 14px; letter-spacing: 0.06em; }
+.drawer-head span { font-size: 12px; color: var(--dim); }
+.knobs { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 18px; max-width: 900px; }
+.knob { display: grid; grid-template-columns: 92px 1fr auto; align-items: center; gap: 10px; min-width: 0; }
+.knob label { font-size: 13px; font-weight: 700; }
+.knob output { font: 12px var(--mono); color: var(--dim); min-width: 3.5em; text-align: right; font-variant-numeric: tabular-nums; }
+.knob input[type=range] { width: 100%; accent-color: var(--hot); min-width: 0; }.knob input[type=color] { width: 44px; height: 30px; border: 1px solid var(--line); border-radius: 8px; background: none; padding: 0; }
+.knob .note { font-size: 12px; color: var(--dim); grid-column: 2 / 4; }
+.tag { display: inline-block; font: 10px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 6px; border-radius: 6px; border: 1px solid var(--line); color: var(--dim); margin-left: 6px; vertical-align: middle; }
+.tag.music { border-color: var(--hot); color: var(--hot); }
+.beat { display: flex; align-items: center; gap: 10px; grid-column: 1 / -1; padding-top: 4px; border-top: 1px solid var(--line); margin-top: 4px; }
+.beat .bpm { font: 700 20px var(--mono); font-variant-numeric: tabular-nums; min-width: 3ch; }
+.beat .lamp { width: 12px; height: 12px; border-radius: 50%; background: var(--hot); opacity: 0.2; }
+.beat small { color: var(--dim); font-size: 12px; }
+.sheet {
+  position: fixed; inset: 0; display: grid; place-items: center;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  background: rgba(4, 3, 8, 0.72);
+}
+.sheet .card { background: #120e1e; border: 1px solid var(--line); border-radius: 14px; width: min(760px, 100%); max-height: 100%; display: flex; flex-direction: column; min-width: 0; }
+.sheet header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.sheet header h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 15px; }
+.sheet .explain { margin: 0; padding: 10px 14px 0; color: var(--dim); font-size: 13px; max-width: 65ch; }
+.sheet pre { margin: 0; padding: 12px 14px 16px; overflow: auto; font: 12px/1.5 var(--mono); color: var(--ink); white-space: pre; }
+.hint {
+  position: fixed; left: 50%; top: 42%; transform: translate(-50%, -50%);
+  font-family: var(--display); font-size: 15px; letter-spacing: 0.04em; text-align: center;
+  color: var(--ink); text-shadow: 0 0 12px rgba(255, 63, 180, 0.8);
+  pointer-events: none; transition: opacity 0.6s; width: min(90%, 420px);
+}
+.err { position: fixed; inset: auto 16px 50% 16px; background: #2a0c18; border: 1px solid var(--hot); border-radius: 12px; padding: 14px; font-size: 14px; }
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { .hint { transition: none; } }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; grid-column: 2 / 4; }
+.seg button { min-height: 34px; padding: 7px 10px; font-size: 12px; }
+.knob.wide { grid-column: 1 / -1; }
+.knob .act { grid-column: 2 / 4; justify-self: start; }
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { .hint { transition: none; } }
+</style>
+
+</head>
+<body>
+<canvas id="stage" aria-label="Lightning Fingers: touch the screen and a bolt of lightning jumps from the centre to each finger, with a chord that grows as you add fingers."></canvas>
+
+<div class="top">
+  <div class="chip">
+    <h1>Lightning Fingers</h1>
+    <p>An ISF shader toy for House Party</p>
+  </div>
+  <div class="btns">
+    <button id="toggleKnobs" class="on" aria-expanded="true" aria-controls="drawer">Knobs</button>
+    <button id="showSource" aria-haspopup="dialog">ISF file</button>
+  </div>
+</div>
+
+<div class="hint" id="hint">Touch anywhere</div>
+
+<section class="drawer" id="drawer" aria-label="Knobs">
+  <div class="drawer-head">
+    <h2>KNOBS</h2>
+    <span>Built automatically from the ISF file's header</span>
+  </div>
+  <div class="knobs" id="knobs"></div>
+</section>
+
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden>
+  <div class="card">
+    <header>
+      <h2 id="sheetTitle">lightning-fingers.fs</h2>
+      <div class="btns"><button id="copySrc">Copy</button><button id="closeSheet">Close</button></div>
+    </header>
+    <p class="explain">This is the whole visual: a JSON header listing its knobs, then the shader. A faithful port of Jon's p5.js toy. Each finger gets a ten-step bolt from the centre, redrawn with new jitter every frame, over a background whose hue walks all the way round in about half a minute. The page plays one more note of a C13 chord for each finger. Let go and a small spark flies home; tap the centre dot to freeze the sparks where they are. On the party screen, House Party would turn the same knobs from the music instead of your fingers.</p>
+    <pre id="srcView"></pre>
+  </div>
+</div>
+
+<script id="isf-source" type="x-shader/x-fragment">/*{
+ "DESCRIPTION": "Faithful port of Lightning Fingers, Jon's p5.js toy: a bolt from the centre to every finger, jittering every frame, over a background that slowly cycles through every hue. Let go and a spark flies home to the centre. Tap the centre dot to freeze the sparks.",
+ "CREDIT": "Original p5.js toy by Jon (jonashw/p5js_lightning_fingers); ISF port for House Party",
+ "ISFVSN": "2",
+ "CATEGORIES": [
+  "Generator",
+  "House Party toy",
+  "Kids toy"
+ ],
+ "INPUTS": [
+  {
+   "NAME": "finger0",
+   "LABEL": "Finger 1",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ]
+  },
+  {
+   "NAME": "finger1",
+   "LABEL": "Finger 2",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ]
+  },
+  {
+   "NAME": "finger2",
+   "LABEL": "Finger 3",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ]
+  },
+  {
+   "NAME": "finger3",
+   "LABEL": "Finger 4",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ]
+  },
+  {
+   "NAME": "finger4",
+   "LABEL": "Finger 5",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ]
+  },
+  {
+   "NAME": "finger5",
+   "LABEL": "Finger 6",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ]
+  },
+  {
+   "NAME": "finger6",
+   "LABEL": "Finger 7",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ]
+  },
+  {
+   "NAME": "finger7",
+   "LABEL": "Finger 8",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ]
+  },
+  {
+   "NAME": "finger8",
+   "LABEL": "Finger 9",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ]
+  },
+  {
+   "NAME": "finger9",
+   "LABEL": "Finger 10",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ]
+  },
+  {
+   "NAME": "orb0",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ],
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "orb1",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ],
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "orb2",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ],
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "orb3",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ],
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "orb4",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ],
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "orb5",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ],
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "orb6",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ],
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "orb7",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ],
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "orb8",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ],
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "orb9",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ],
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "size",
+   "LABEL": "Lightning size",
+   "TYPE": "long",
+   "DEFAULT": 0,
+   "VALUES": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "LABELS": [
+    "50",
+    "75",
+    "100",
+    "200"
+   ]
+  },
+  {
+   "NAME": "unitSize",
+   "TYPE": "float",
+   "DEFAULT": 0.11,
+   "MIN": 0.01,
+   "MAX": 1.0,
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "unitStroke",
+   "TYPE": "float",
+   "DEFAULT": 0.011,
+   "MIN": 0.0,
+   "MAX": 0.2,
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "centerScale",
+   "TYPE": "float",
+   "DEFAULT": 1.0,
+   "MIN": 1.0,
+   "MAX": 4.0,
+   "HOUSEPARTY_HIDDEN": true
+  }
+ ]
+}*/
+// ---- Lightning Fingers (faithful port) ----
+// Units: everything is measured in "short sides" of the screen, centred on the middle,
+// so the toy looks the same on a phone, a Kindle Fire, or the Party Wall.
+// unitSize = the original's lightning factor d (displayDensity * 50 CSS px) / short side.
+// unitStroke = the original's strokeWeight (5 * displayDensity CSS px) / short side.
+
+float hash3(vec3 p) {
+  p = fract(p * vec3(0.1031, 0.1030, 0.0973));
+  p += dot(p, p.yxz + 33.33);
+  return fract((p.x + p.y) * p.z);
+}
+// p5's noise(frameCount / random(n)) lands near 0.5 most of the time: a sum of
+// three random numbers has that same bunched-up spread.
+float jit(float seed, float k, float axis) {
+  float f = float(FRAMEINDEX);
+  return (hash3(vec3(seed, k + axis * 17.0, f)) + hash3(vec3(seed + 3.1, k * 1.7 + axis, f + 0.5)) + hash3(vec3(k, seed + axis * 5.3, f * 1.3))) / 3.0 - 0.5;
+}
+float sdSeg(vec2 p, vec2 a, vec2 b) {
+  vec2 pa = p - a, ba = b - a;
+  float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-9), 0.0, 1.0);
+  return length(pa - ba * h);
+}
+// The original lightning(): 10 steps from a to b. Each step covers 1/i of what is left,
+// then jumps sideways by up to C/2 (C = 5d/10), so the bolt is new every frame.
+float bolt(vec2 p, vec2 a, vec2 b, float d, float w, float seed) {
+  float C = 0.5 * d;
+  if (sdSeg(p, a, b) > 1.2 * C + w) return 1e3;   // far from this bolt: skip the work
+  vec2 x = a;
+  float m = 1e3;
+  for (int k = 0; k < 10; k++) {
+    float i = float(10 - k);
+    vec2 xn = x - (x - b) / i + vec2(jit(seed, float(k), 0.0), jit(seed, float(k), 1.0)) * C;
+    m = min(m, sdSeg(p, x, xn));
+    x = xn;
+  }
+  m = min(m, sdSeg(p, x, b));
+  return m - 0.5 * w;
+}
+
+// p5 colorMode(HSL, 255, 255, 255): hue/sat/light all 0..1 here.
+vec3 hsl2rgb(float h, float s, float l) {
+  vec3 rgb = clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+  float c = (1.0 - abs(2.0 * l - 1.0)) * s;
+  return l + c * (rgb - 0.5);
+}
+float vnoise(float x) {
+  float i = floor(x), f = fract(x);
+  float a = hash3(vec3(i, 7.0, 1.0)), b = hash3(vec3(i + 1.0, 7.0, 1.0));
+  return mix(a, b, f * f * (3.0 - 2.0 * f));
+}
+// p5 noise(): 4 octaves, each half as loud.
+float p5noise(float x) {
+  return 0.5 * vnoise(x) + 0.25 * vnoise(x * 2.0 + 11.0) + 0.125 * vnoise(x * 4.0 + 23.0) + 0.0625 * vnoise(x * 8.0 + 37.0);
+}
+
+vec2 toUnits(vec2 n) { return (n - 0.5) * RENDERSIZE / min(RENDERSIZE.x, RENDERSIZE.y); }
+
+void main() {
+  float px = 1.0 / min(RENDERSIZE.x, RENDERSIZE.y);
+  vec2 p = toUnits(isf_FragNormCoord);
+  float frames = TIME * 60.0;   // the original stepped once per frame at 60 fps
+
+  // Background: hue walks 1/8 of a step (out of 256) every frame, at sat 255, light 148.
+  vec3 bg = hsl2rgb(fract(frames / 2048.0), 1.0, 148.0 / 255.0);
+  // Foreground: hue 200..254 (of 255) picked by slow noise, sat 255, light 100.
+  float hi = clamp(floor(p5noise(frames / 30.0) * 55.0) - 1.0, 0.0, 54.0);
+  vec3 fg = hsl2rgb((200.0 + hi) / 255.0, 1.0, 100.0 / 255.0);
+
+  float d = unitSize * (size == 1 ? 1.5 : size == 2 ? 2.0 : size == 3 ? 4.0 : 1.0);
+  float w = unitStroke;
+  vec2 c = vec2(0.0);
+  float m = 1e3;
+
+#define FINGER(F, S) if (F.x >= 0.0) { vec2 q = toUnits(F); m = min(m, bolt(p, c, q, d, w, S)); m = min(m, length(p - q) - 0.5 * d - 0.5 * px); }
+#define ORB(F, S) if (F.x >= 0.0) { vec2 q = toUnits(F); m = min(m, bolt(p, c, q, d / 3.0, w / 3.0, S)); m = min(m, length(p - q) - d / 6.0 - 0.5 * px); }
+  FINGER(finger0, 1.0) FINGER(finger1, 2.0) FINGER(finger2, 3.0) FINGER(finger3, 4.0) FINGER(finger4, 5.0)
+  FINGER(finger5, 6.0) FINGER(finger6, 7.0) FINGER(finger7, 8.0) FINGER(finger8, 9.0) FINGER(finger9, 10.0)
+  ORB(orb0, 11.0) ORB(orb1, 12.0) ORB(orb2, 13.0) ORB(orb3, 14.0) ORB(orb4, 15.0)
+  ORB(orb5, 16.0) ORB(orb6, 17.0) ORB(orb7, 18.0) ORB(orb8, 19.0) ORB(orb9, 20.0)
+  // The centre dot (bigger while frozen, and bigger again for each frozen spark).
+  m = min(m, length(p - c) - 0.5 * d * centerScale - 0.5 * px);
+
+  float a = clamp(0.5 - m / px, 0.0, 1.0);
+  gl_FragColor = vec4(mix(bg, fg, a), 1.0);
+}
+</script>
+
+<script>
+(() => {
+  const src = document.getElementById('isf-source').textContent.trim();
+  document.getElementById('srcView').textContent = src;
+
+  // ---------- A tiny ISF loader, now with PASSES ----------
+  function parseISF(text) {
+    const m = text.match(/^\s*\/\*\s*(\{[\s\S]*?\})\s*\*\//);
+    if (!m) throw new Error('No ISF header found.');
+    return { meta: JSON.parse(m[1]), body: text.slice(m[0].length) };
+  }
+  const GLSL_TYPE = { float: 'float', bool: 'bool', long: 'int', event: 'bool', color: 'vec4', point2D: 'vec2' };
+
+  const canvas = document.getElementById('stage');
+  const gl = canvas.getContext('webgl', { antialias: false, preserveDrawingBuffer: false });
+  function fail(msg) {
+    const box = document.createElement('div');
+    box.className = 'err';
+    box.textContent = msg;
+    document.body.appendChild(box);
+  }
+  if (!gl) { fail('This browser has WebGL turned off, so the visual cannot draw. Try Chrome or Safari with hardware acceleration on.'); return; }
+
+  const { meta, body } = parseISF(src);
+  const inputs = meta.INPUTS || [];
+  const passes = meta.PASSES && meta.PASSES.length ? meta.PASSES : [{}];
+  const targets = [...new Set(passes.filter(p => p.TARGET).map(p => p.TARGET))];   // several passes may draw the same target in turn
+
+  // ISF hosts rewrite a few helper calls before compiling.
+  const rewritten = body
+    .replace(/IMG_SIZE\(\s*(\w+)\s*\)/g, '_$1_imgSize')
+    .replace(/IMG_NORM_PIXEL\(\s*(\w+)\s*,/g, 'texture2D($1,')
+    .replace(/IMG_PIXEL\(\s*(\w+)\s*,\s*([^)]+)\)/g, 'texture2D($1, ($2) / _$1_imgSize)');
+  const fragHeader = [
+    '#ifdef GL_FRAGMENT_PRECISION_HIGH', 'precision highp float;', '#else', 'precision mediump float;', '#endif',
+    'uniform vec2 RENDERSIZE;', 'uniform float TIME;', 'uniform float TIMEDELTA;', 'uniform int FRAMEINDEX;', 'uniform int PASSINDEX;', 'varying vec2 isf_FragNormCoord;',
+    ...inputs.filter(i => i.TYPE !== 'image').map(i => `uniform ${GLSL_TYPE[i.TYPE] || 'float'} ${i.NAME};`),
+    ...inputs.filter(i => i.TYPE === 'image').map(i => `uniform sampler2D ${i.NAME}; uniform vec2 _${i.NAME}_imgSize;`),
+    ...targets.map(t => `uniform sampler2D ${t}; uniform vec2 _${t}_imgSize;`)
+  ].join('\n');
+  const vert = 'attribute vec2 p; varying vec2 isf_FragNormCoord; void main(){ isf_FragNormCoord = p * 0.5 + 0.5; gl_Position = vec4(p, 0.0, 1.0); }';
+
+  function compile(type, code) {
+    const sh = gl.createShader(type);
+    gl.shaderSource(sh, code);
+    gl.compileShader(sh);
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh));
+    return sh;
+  }
+  function link(fs) {
+    const pr = gl.createProgram();
+    gl.attachShader(pr, compile(gl.VERTEX_SHADER, vert));
+    gl.attachShader(pr, compile(gl.FRAGMENT_SHADER, fs));
+    gl.linkProgram(pr);
+    if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(pr));
+    return pr;
+  }
+  let prog, copyProg;
+  try {
+    prog = link(fragHeader + '\n' + rewritten);
+    // Used to keep a persistent grid's contents when the screen rotates.
+    copyProg = link('precision mediump float; uniform sampler2D src; varying vec2 isf_FragNormCoord; void main(){ gl_FragColor = texture2D(src, isf_FragNormCoord); }');
+  } catch (e) { fail('The shader did not compile: ' + e.message); return; }
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  [prog, copyProg].forEach(pr => {
+    const loc = gl.getAttribLocation(pr, 'p');
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  });
+  gl.useProgram(prog);
+  // Uniform locations, looked up once per program.
+  const ulocs = new Map();
+  const U = n => { let m = ulocs.get(prog); if (!m) ulocs.set(prog, m = {}); if (!(n in m)) m[n] = gl.getUniformLocation(prog, n); return m[n]; };
+  // HOUSEPARTY_VARIANT (opt-in): names a long input, e.g. "scene". The page then also compiles one program per
+  // value of that input, with "#define HP_VARIANT <value>" in front, and draws with the one for the current value.
+  // The shader stays one source; with HP_VARIANT defined it can make that input a constant, so the compiler drops
+  // every other scene's code and each program is small and fast. Hosts without this (the rack, other ISF apps)
+  // just compile the whole shader as before. Variants compile in the background, one every few frames.
+  const variantIn = meta.HOUSEPARTY_VARIANT && inputs.find(i => i.NAME === meta.HOUSEPARTY_VARIANT);
+  const fullProg = prog, variants = new Map();
+  function variantProg(v, build) {
+    if (variants.has(v)) return variants.get(v);
+    if (!build) return null;
+    let pr = null;
+    try {
+      pr = link(fragHeader + '\n#define HP_VARIANT ' + (v | 0) + '\n' + rewritten);
+      const loc = gl.getAttribLocation(pr, 'p');
+      gl.enableVertexAttribArray(loc);
+      gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    } catch (e) { pr = fullProg; }
+    variants.set(v, pr);
+    return pr;
+  }
+  let variantTick = 0;
+  function pickProg() {
+    if (!variantIn) return;
+    const v = +val[variantIn.NAME] | 0;
+    // the one needed now: build it if missing (a short hitch once); otherwise warm up one other every 8 frames
+    prog = variantProg(v, true) || fullProg;
+    if (++variantTick % 8 === 0) {
+      const todo = (variantIn.VALUES || []).find(x => !variants.has(x));
+      if (todo !== undefined) variantProg(todo, true);
+    }
+  }
+  const uTime = () => U('TIME'), uDelta = () => U('TIMEDELTA'), uSize = () => U('RENDERSIZE'), uFrame = () => U('FRAMEINDEX'), uPass = () => U('PASSINDEX');
+
+  // ---------- Render targets (ping-pong pairs, so a pass can read last frame) ----------
+  // ISF "FLOAT": true on a pass asks for a half-float target (needed by simulations); 8-bit when the device can't.
+  const halfExt = gl.getExtension('OES_texture_half_float');
+  const halfLinear = !!gl.getExtension('OES_texture_half_float_linear');
+  gl.getExtension('EXT_color_buffer_half_float');
+  let halfOK = !!halfExt;
+  function makeTex(w, h, float) {
+    const t = gl.createTexture();
+    const fb = gl.createFramebuffer();
+    const useHalf = float && halfOK;
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, useHalf ? halfExt.HALF_FLOAT_OES : gl.UNSIGNED_BYTE, null);
+    const filt = useHalf && !halfLinear ? gl.NEAREST : gl.LINEAR;
+    [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER].forEach(k => gl.texParameteri(gl.TEXTURE_2D, k, filt));
+    [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T].forEach(k => gl.texParameteri(gl.TEXTURE_2D, k, gl.CLAMP_TO_EDGE));
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+    if (useHalf && gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
+      halfOK = false; gl.deleteFramebuffer(fb); gl.deleteTexture(t); return makeTex(w, h, false);
+    }
+    gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+    return { t, fb };
+  }
+  const T = {};
+  targets.forEach((name, k) => { T[name] = { w: 0, h: 0, read: null, write: null, unit: k, uS: U(name), uSz: U('_' + name + '_imgSize') }; });
+
+  // WIDTH/HEIGHT expressions use $WIDTH/$HEIGHT in CSS pixels, so the grid stays the same
+  // when the page lowers its drawing resolution to keep up on a slow phone.
+  function evalSize(expr, W, H) {
+    if (expr === undefined) return null;
+    const js = String(expr).replace(/\$WIDTH/g, W).replace(/\$HEIGHT/g, H)
+      .replace(/\$(\w+)/g, (_, n) => +val[n] || 0).replace(/\b(floor|ceil|round|max|min|abs|pow|sqrt)\b/g, 'Math.$1');
+    if (!/^[\d\s.+\-*/(),Math.a-z]*$/.test(js)) return null;
+    return Math.max(1, Math.round(Function('return (' + js + ')')()));
+  }
+  function sizeTargets() {
+    const W = canvas.clientWidth, H = canvas.clientHeight;
+    passes.forEach(p => {
+      if (!p.TARGET) return;
+      const t = T[p.TARGET];
+      const w = evalSize(p.WIDTH, W, H) || canvas.width, h = evalSize(p.HEIGHT, W, H) || canvas.height;
+      if (w === t.w && h === t.h) return;
+      const old = t.read;
+      const fl = passes.some(q => q.TARGET === p.TARGET && q.FLOAT);
+      t.read = makeTex(w, h, fl); t.write = makeTex(w, h, fl); t.w = w; t.h = h;
+      if (old && p.PERSISTENT) {   // stretch the old grid into the new one
+        gl.useProgram(copyProg);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, t.read.fb);
+        gl.viewport(0, 0, w, h);
+        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, old.t);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        gl.useProgram(prog);
+      }
+    });
+  }
+
+  // ---------- Knob values, one per input ----------
+  const reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const val = {};
+  inputs.forEach(i => { val[i.NAME] = Array.isArray(i.DEFAULT) ? i.DEFAULT.slice() : (i.DEFAULT ?? (i.TYPE === 'event' ? false : 0)); });
+  const TOUCH_NOTE = "Up to {n} fingers, each with its own bolt";
+  
+
+  // House Party extension (ignored by other ISF hosts): an event marked HOUSEPARTY_TICKS
+  // gets no control; the host fires it as many times a second as the named knob says.
+  const ticks = inputs.filter(i => i.HOUSEPARTY_TICKS);
+  // Image inputs: the toy's own script fills imageTex[name] = { t, w, h } (for example, text drawn on a canvas).
+  const imageTex = {};
+  const MUSIC = new Set(['pulse', 'beat']);   // turned by the beat clock here, by the bridge at a party
+  const fired = new Set();                    // events to send as true on the next frame only
+
+  // ---------- Build controls from the header ----------
+  const knobs = document.getElementById('knobs');
+  const outputs = {};
+  const manual = {};
+  const pts = inputs.filter(x => x.TYPE === 'point2D' && /^finger\d$/.test(x.NAME));
+  inputs.forEach(i => {
+    if (i.TYPE === 'image' || i.HOUSEPARTY_HIDDEN || i.HOUSEPARTY_TICKS || (i.TYPE === 'event' && (MUSIC.has(i.NAME) || !i.LABEL))) return;   // unlabelled events are fired by the page itself
+    if (i.TYPE === 'point2D' && pts[0] !== i) return;   // one row for all fingers; finger speeds get none
+    const row = document.createElement('div');
+    row.className = 'knob';
+    const id = 'k-' + i.NAME;
+    const lab = document.createElement('label');
+    lab.htmlFor = id;
+    lab.textContent = i.LABEL || i.NAME;
+    row.appendChild(lab);
+    if (i.TYPE === 'float') {
+      const r = document.createElement('input');
+      r.type = 'range'; r.id = id; r.min = i.MIN; r.max = i.MAX; r.step = (i.MAX - i.MIN) / 200; r.value = val[i.NAME];
+      const o = document.createElement('output');
+      o.htmlFor = id; o.textContent = (+r.value).toFixed(i.MAX - i.MIN < 0.2 ? 3 : 2);
+      outputs[i.NAME] = { r, o };
+      // A knob that runs from negative to positive gets a centre mark and snaps to 0 near the middle.
+      const bipolar = i.MIN < 0 && i.MAX > 0;
+      if (bipolar) {
+        const dl = document.createElement('datalist');
+        dl.id = id + '-ticks'; dl.innerHTML = '<option value="0"></option>';
+        row.appendChild(dl); r.setAttribute('list', dl.id);
+      }
+      r.addEventListener('input', () => {
+        let v = +r.value;
+        if (bipolar && Math.abs(v) < (i.MAX - i.MIN) * 0.03) { v = 0; r.value = 0; }
+        val[i.NAME] = v; o.textContent = v.toFixed(2); manual[i.NAME] = performance.now();
+      });
+      row.append(r, o);
+      if (MUSIC.has(i.NAME)) lab.insertAdjacentHTML('beforeend', '<span class="tag music">beat</span>');
+    } else if (i.TYPE === 'long' && (i.VALUES || []).length > 8) {
+      // A long pick-one list (more than 8 choices) becomes a dropdown.
+      const sel = document.createElement('select');
+      sel.id = id;
+      sel.style.cssText = 'font:inherit;padding:8px 10px;border-radius:10px;background:#1b1b24;color:inherit;border:1px solid #3a3a48;max-width:100%';
+      (i.VALUES || []).forEach((v, k) => { const o = document.createElement('option'); o.value = v; o.textContent = (i.LABELS || [])[k] ?? v; o.selected = v === val[i.NAME]; sel.appendChild(o); });
+      sel.addEventListener('change', () => { val[i.NAME] = +sel.value; });
+      row.appendChild(sel);
+    } else if (i.TYPE === 'long') {
+      // A pick-one input becomes a row of buttons.
+      row.classList.add('wide');
+      const seg = document.createElement('div');
+      seg.className = 'seg'; seg.id = id; seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', i.LABEL || i.NAME);
+      lab.removeAttribute('for');
+      (i.VALUES || []).forEach((v, k) => {
+        const b = document.createElement('button');
+        b.textContent = (i.LABELS || [])[k] ?? v;
+        b.setAttribute('aria-pressed', String(v === val[i.NAME]));
+        b.classList.toggle('on', v === val[i.NAME]);
+        b.addEventListener('click', () => {
+          val[i.NAME] = v;
+          seg.querySelectorAll('button').forEach(x => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); });
+        });
+        seg.appendChild(b);
+      });
+      row.appendChild(seg);
+    } else if (i.TYPE === 'event') {
+      const b = document.createElement('button');
+      b.className = 'act'; b.id = id; b.textContent = i.LABEL || i.NAME;
+      lab.textContent = ''; lab.setAttribute('aria-hidden', 'true');
+      b.addEventListener('click', () => fired.add(i.NAME));
+      row.appendChild(b);
+    } else if (i.TYPE === 'point2D') {
+      lab.textContent = pts.length > 1 ? 'Fingers' : (i.LABEL || i.NAME);
+      lab.insertAdjacentHTML('beforeend', '<span class="tag">touch</span>');
+      const n = document.createElement('span');
+      n.className = 'note'; n.id = id;
+      n.textContent = TOUCH_NOTE.replace('{n}', pts.length);
+      row.append(n);
+    }
+    knobs.appendChild(row);
+  });
+
+  // Beat clock: tap tempo, starts at 124 BPM.
+  const beatRow = document.createElement('div');
+  beatRow.className = 'beat';
+  beatRow.innerHTML = '<span class="lamp" id="lamp"></span><span class="bpm" id="bpm">124</span><small>BPM</small><button id="tap">Tap tempo</button><button id="half">½</button><button id="dbl">×2</button><small id="tapNote">Tap 4 times on the beat</small>';
+  knobs.appendChild(beatRow);
+  let bpm = 124, beat0 = performance.now(), taps = [], lastBeat = -1;
+  const bpmEl = document.getElementById('bpm'), lamp = document.getElementById('lamp');
+  const setBpm = b => { bpm = Math.min(200, Math.max(60, b)); bpmEl.textContent = Math.round(bpm); };
+  document.getElementById('tap').addEventListener('click', () => {
+    const t = performance.now();
+    taps = taps.filter(x => t - x < 2500); taps.push(t);
+    if (taps.length >= 2) {
+      const gaps = taps.slice(1).map((x, k) => x - taps[k]);
+      setBpm(60000 / (gaps.reduce((a, b) => a + b, 0) / gaps.length));
+    }
+    beat0 = t; lastBeat = -1;
+  });
+  document.getElementById('half').addEventListener('click', () => setBpm(bpm / 2));
+  document.getElementById('dbl').addEventListener('click', () => setBpm(bpm * 2));
+
+  // ---------- Lightning Fingers, faithful port of Jon's p5.js sketch (src/sketch.js) ----------
+  // Touch model, sounds and keys follow the original; drawing moved into the ISF shader.
+  // Grown-ups: add #knobs to the address to see the knob drawer. Keys: 1-9 and 0 fake that many fingers,
+  // w = next waveform, l = next lightning size, u = freeze, space = shake.
+  if (/knobs/.test(location.hash)) document.body.classList.add('grownup');
+  const DD = window.devicePixelRatio || 1;          // p5's displayDensity()
+  const FACTORS = [50, 75, 100, 200];               // lightningFactors, times displayDensity
+  let updating = true;                              // tap the centre dot to flip it ("frozen" when false)
+  const fingers = new Map();                        // pointerId -> {x, y} in CSS px
+  let keyFingers = [];                              // fingers faked by number keys
+  let exiting = [];                                 // released touches flying home: {x, y, hx, hy, life}
+  const W = () => canvas.clientWidth, H = () => canvas.clientHeight;
+  const centre = () => ({ x: W() / 2, y: H() / 2 });
+  const short = () => Math.min(W(), H());
+  const d = () => DD * FACTORS[val.size | 0];
+  const centreDiameter = () => updating ? d() : d() * (1.5 + exiting.length / 10);
+  const inCircle = (c, r, pt) => Math.hypot(c.x - pt.x, c.y - pt.y) <= r;
+
+  // ---------- Sound: the 13th-chord oscillators and the MonoSynth blips ----------
+  // C13 voicing over five octaves, exactly the original list; finger n turns on oscillator n.
+  const FREQS = [261.6255653005986, 329.6275569128699, 391.99543598174927, 466.1637615180899, 587.3295358348151, 880,
+    1046.5022612023945, 1318.5102276514797, 1567.981743926997, 1864.6550460723597, 2349.31814333926, 3520,
+    4186.009044809578, 5274.040910605919, 6271.926975707989, 7458.620184289437, 9397.272573357044, 14080,
+    16744.036179238312, 21096.16364242367];
+  const WAVES = ['triangle', 'sine', 'sawtooth', 'square'];
+  let wave = 0, ac = null, oscs = [], playing = 0;
+  function audio() {
+    if (ac) { if (ac.state === 'suspended') ac.resume(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    ac = new AC();
+    oscs = FREQS.map(f => {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = WAVES[wave]; o.frequency.value = Math.min(f, ac.sampleRate / 2 - 1); g.gain.value = 0;
+      o.connect(g); g.connect(ac.destination); o.start();
+      return { o, g };
+    });
+  }
+  // setFirstNOscillatorsPlaying: the first n play, each at 0.5/n so the total stays the same loudness.
+  function setPlaying(n) {
+    n = Math.min(n, oscs.length);
+    if (!ac || n === playing) return;
+    playing = n;
+    const t = ac.currentTime;
+    oscs.forEach((v, i) => { v.g.gain.cancelScheduledValues(t); v.g.gain.setTargetAtTime(i < n ? 0.5 / n : 0, t, 0.008); });
+  }
+  // p5.MonoSynth.play(note, 0.25, 0, 1/6): a short sine blip.
+  function blip(freq) {
+    if (!ac) return;
+    const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.25, t + 0.02);
+    g.gain.setTargetAtTime(0.25 * 0.3, t + 0.02, 0.08); g.gain.setTargetAtTime(0, t + 1 / 6, 0.1);
+    o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + 1);
+  }
+  const NOTE = { C3: 130.81, D3: 146.83, E3: 164.81, F3: 174.61, G3: 196, A3: 220, B3: 246.94, C4: 261.63, G4: 392 };
+  const toggleSound = () => blip(updating ? NOTE.C4 : NOTE.G4);
+
+  // ---------- Touch ----------
+  const pt = e => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  function beginExit(list) {
+    const c = centre();
+    list.forEach(t => exiting.push({ x: t.x, y: t.y, hx: c.x - t.x, hy: c.y - t.y, life: 10 }));
+  }
+  const pending = new Map();   // a touch that toggled the centre only becomes a finger if it moves (as in the original)
+  canvas.addEventListener('pointerdown', e => {
+    audio();
+    try { document.fullscreenElement || document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {}); } catch (_) {}
+    canvas.setPointerCapture(e.pointerId);
+    const p = pt(e);
+    if (e.pointerType === 'mouse') { beginExit([...fingers.values()]); fingers.clear(); }
+    const r = (e.pointerType === 'mouse' ? d() : centreDiameter()) / 2;
+    if (inCircle(centre(), r, p)) { toggleSound(); updating = !updating; pending.set(e.pointerId, p); return; }
+    fingers.set(e.pointerId, p);
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (pending.has(e.pointerId)) { pending.delete(e.pointerId); fingers.set(e.pointerId, pt(e)); return; }
+    if (fingers.has(e.pointerId)) fingers.set(e.pointerId, pt(e));
+  });
+  const end = e => {
+    pending.delete(e.pointerId);
+    if (!fingers.has(e.pointerId)) return;
+    const p = pt(e);
+    fingers.delete(e.pointerId);
+    // Lifted right by the centre: no spark (the original checks the full lightning factor as a radius).
+    if (!inCircle(centre(), d(), p)) beginExit([p]);
+  };
+  canvas.addEventListener('pointerup', end);
+  canvas.addEventListener('pointercancel', end);
+  document.addEventListener('contextmenu', e => e.preventDefault());
+
+  // ---------- Shake: a random note from C3 to B3, and frozen sparks jump somewhere new ----------
+  function shake() {
+    const notes = [NOTE.C3, NOTE.D3, NOTE.E3, NOTE.F3, NOTE.G3, NOTE.A3, NOTE.B3];
+    blip(notes[Math.floor(Math.random() * notes.length)]);
+    const c = centre();
+    exiting.forEach(tc => { tc.x = Math.random() * W(); tc.y = Math.random() * H(); tc.hx = c.x - tc.x; tc.hy = c.y - tc.y; });
+  }
+  let lastAcc = null, lastShake = 0;
+  window.addEventListener('devicemotion', e => {
+    const a = e.accelerationIncludingGravity; if (!a || a.x == null) return;
+    if (lastAcc) {
+      const change = Math.abs(a.x - lastAcc.x) + Math.abs(a.y - lastAcc.y) + Math.abs((a.z || 0) - (lastAcc.z || 0));
+      const now = performance.now();
+      if (change > 30 && now - lastShake > 250) { lastShake = now; shake(); }   // p5's default shake threshold is 30
+    }
+    lastAcc = { x: a.x, y: a.y, z: a.z };
+  });
+
+  // ---------- Keys (for testing without a touch screen) ----------
+  const held = new Set();
+  function keyFingersFromHeld() {
+    let n = [...held].map(k => parseInt(k, 10)).filter(k => !isNaN(k))[0];
+    if (n === 0) n = 10;
+    if (n === undefined) { beginExit(keyFingers); keyFingers = []; return; }
+    const c = centre(), r = short() / 3;
+    keyFingers = Array.from({ length: n }, (_, i) => { const t = i / n * 2 * Math.PI; return { x: r * Math.cos(t) + c.x, y: r * Math.sin(t) + c.y }; });
+  }
+  window.addEventListener('keydown', e => {
+    if (e.repeat) return;
+    audio();
+    if (/^[0-9]$/.test(e.key)) { held.add(e.key); keyFingersFromHeld(); }
+    if (e.key === 'w') { wave = (wave + 1) % WAVES.length; oscs.forEach(v => { v.o.type = WAVES[wave]; }); }
+    if (e.key === 'l') { val.size = ((val.size | 0) + 1) % 4; }
+    if (e.key === 'u') updating = !updating;
+    if (e.key === ' ') { e.preventDefault(); shake(); }
+  });
+  window.addEventListener('keyup', e => { if (held.delete(e.key)) keyFingersFromHeld(); });
+
+  // ---------- Each frame ----------
+  let lastT = performance.now();
+  const norm = p => [p.x / W(), 1 - p.y / H()];
+  function toyFrame(now) {
+    const steps = Math.min(now - lastT, 100) / (1000 / 60); lastT = now;   // the original moved once per 60 fps frame
+    if (updating) {
+      for (let i = exiting.length - 1; i >= 0; i--) {
+        const tc = exiting[i], k = Math.min(steps, tc.life);
+        tc.x += tc.hx / 10 * k; tc.y += tc.hy / 10 * k; tc.life -= steps;
+        if (tc.life <= 0) exiting.splice(i, 1);
+      }
+    }
+    const live = [...fingers.values(), ...keyFingers];
+    setPlaying(live.length + exiting.length);
+    for (let i = 0; i < 10; i++) {
+      val['finger' + i] = live[i] ? norm(live[i]) : [-1, -1];
+      val['orb' + i] = exiting[i] ? norm(exiting[i]) : [-1, -1];
+    }
+    val.unitSize = DD * 50 / short();
+    val.unitStroke = 5 * DD / short();
+    val.centerScale = centreDiameter() / d();
+  }
+
+  // ---------- Buttons ----------
+  const drawer = document.getElementById('drawer'), tk = document.getElementById('toggleKnobs');
+  tk.addEventListener('click', () => {
+    drawer.hidden = !drawer.hidden;
+    tk.classList.toggle('on', !drawer.hidden);
+    tk.setAttribute('aria-expanded', String(!drawer.hidden));
+  });
+  const sheet = document.getElementById('sheet');
+  document.getElementById('showSource').addEventListener('click', () => { sheet.hidden = false; document.getElementById('closeSheet').focus(); });
+  document.getElementById('closeSheet').addEventListener('click', () => { sheet.hidden = true; });
+  sheet.addEventListener('click', e => { if (e.target === sheet) sheet.hidden = true; });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') sheet.hidden = true; });
+  document.getElementById('copySrc').addEventListener('click', async e => {
+    const b = e.currentTarget;
+    try { await navigator.clipboard.writeText(src); b.textContent = 'Copied'; }
+    catch { const sel = getSelection(), range = document.createRange(); range.selectNodeContents(document.getElementById('srcView')); sel.removeAllRanges(); sel.addRange(range); b.textContent = 'Selected'; }
+    setTimeout(() => { b.textContent = 'Copy'; }, 1500);
+  });
+
+  // ---------- Render loop with adaptive resolution ----------
+  let scale = Math.min(window.devicePixelRatio || 1, 1.5), frame = 0, last = performance.now(), slow = 0;
+  const tickAcc = {};
+  function resize() {
+    const w = Math.max(1, Math.round(canvas.clientWidth * scale)), h = Math.max(1, Math.round(canvas.clientHeight * scale));
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+    sizeTargets();
+  }
+  try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(() => {}); } catch (e) {}
+  const t0 = performance.now();
+  function draw(now) {
+    // A toy can cap its frame rate (const TOY_MAX_FPS in its toy.js) to spare the GPU.
+    if (typeof TOY_MAX_FPS !== 'undefined' && now - last < 1000 / TOY_MAX_FPS - 3) { requestAnimationFrame(draw); return; }
+    const dt = now - last; last = now;
+    if (dt > 40) slow++; else slow = Math.max(0, slow - 1);
+    if (slow > 20 && scale > 0.5) { scale *= 0.8; slow = 0; }
+    resize();
+    toyFrame(now, dt);
+
+    // Beat clock: pulse knob and a "beat" event once per beat.
+    const period = 60000 / bpm;
+    const elapsed = now - beat0;
+    const ph = ((elapsed % period) + period) % period / period;
+    const p = Math.pow(1 - ph, 3);
+    if (!(manual.pulse && now - manual.pulse < 3000)) {
+      val.pulse = reduced ? p * 0.4 : p;
+      if (outputs.pulse) { outputs.pulse.r.value = val.pulse; outputs.pulse.o.textContent = val.pulse.toFixed(2); }
+    }
+    const beatNo = Math.floor(elapsed / period);
+    if (beatNo !== lastBeat) { lastBeat = beatNo; fired.add('beat'); }
+    lamp.style.opacity = 0.2 + 0.8 * p;
+
+    // Ticking events fire at their knob's rate.
+    ticks.forEach(i => {
+      tickAcc[i.NAME] = (tickAcc[i.NAME] || 0) + Math.min(dt, 100) / 1000 * (+val[i.HOUSEPARTY_TICKS] || 0);
+      if (tickAcc[i.NAME] >= 1) { tickAcc[i.NAME] = Math.min(tickAcc[i.NAME] - 1, 1); fired.add(i.NAME); }
+    });
+
+    pickProg();
+    gl.useProgram(prog);
+    gl.uniform1f(uTime(), (now - t0) / 1000);
+    gl.uniform1f(uDelta(), Math.min(dt, 100) / 1000);
+    gl.uniform1i(uFrame(), frame);
+    inputs.forEach(i => {
+      if (i.TYPE === 'image') return;
+      const l = U(i.NAME);
+      const v = i.TYPE === 'event' ? fired.has(i.NAME) : val[i.NAME];
+      if (i.TYPE === 'float') gl.uniform1f(l, v);
+      else if (i.TYPE === 'long' || i.TYPE === 'bool' || i.TYPE === 'event') gl.uniform1i(l, +v);
+      else if (i.TYPE === 'color') gl.uniform4f(l, v[0], v[1], v[2], v[3] ?? 1);
+      else if (i.TYPE === 'point2D') gl.uniform2f(l, v[0], v[1]);
+    });
+    fired.clear();
+
+    passes.forEach((ps, k) => {
+      targets.forEach(name => {
+        const t = T[name];
+        gl.activeTexture(gl.TEXTURE0 + t.unit);
+        gl.bindTexture(gl.TEXTURE_2D, t.read.t);
+        gl.uniform1i(t.uS, t.unit);
+        gl.uniform2f(t.uSz, t.w, t.h);
+      });
+      inputs.filter(i => i.TYPE === 'image').forEach((i, n) => {
+        const it = imageTex[i.NAME]; if (!it) return;
+        gl.activeTexture(gl.TEXTURE0 + targets.length + n);
+        gl.bindTexture(gl.TEXTURE_2D, it.t);
+        gl.uniform1i(U(i.NAME), targets.length + n);
+        gl.uniform2f(U('_' + i.NAME + '_imgSize'), it.w, it.h);
+      });
+      gl.uniform1i(uPass(), k);
+      if (ps.TARGET) {
+        const t = T[ps.TARGET];
+        gl.bindFramebuffer(gl.FRAMEBUFFER, t.write.fb);
+        gl.viewport(0, 0, t.w, t.h);
+        gl.uniform2f(uSize(), t.w, t.h);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        [t.read, t.write] = [t.write, t.read];
+      } else {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.uniform2f(uSize(), canvas.width, canvas.height);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+      }
+    });
+    frame++;
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+})();
+</script>
+
+</body>
+</html>

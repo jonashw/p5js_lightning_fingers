@@ -1,0 +1,1510 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="../favicon-32x32.png">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>html,body{margin:0;height:100%;background:#000;}</style>
+<title>Lightning Fingers 2</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+/* Kids' tablet mode: nothing on screen but the toy. Grown-ups add #knobs to the address. */
+body:not(.grownup) .top, body:not(.grownup) .drawer, body:not(.grownup) .hint { display: none !important; }
+html, body { overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+body:not(.grownup) #stage { cursor: default; }
+</style>
+<meta name="theme-color" content="#000000">
+<style>
+/* Layout: one full-bleed WebGL stage; a floating title chip, two corner buttons, and a knob drawer that slides up from the bottom. Deliberately single-theme: it is a dark dance floor. */
+:root {
+  --floor: #07060c;
+  --glass: rgba(18, 14, 30, 0.78);
+  --line: rgba(255, 255, 255, 0.14);
+  --ink: #f4f1ff;
+  --dim: #b5aecb;
+  --hot: #ff3fb4;
+  --display: "Bungee", "Arial Black", Impact, sans-serif;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--floor);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 15px;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+#stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
+.top {
+  position: fixed; left: 0; right: 0; top: 0;
+  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  pointer-events: none;
+}
+.chip { pointer-events: auto; background: var(--glass); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.chip h1 { margin: 0; font-family: var(--display); font-size: 18px; font-weight: 400; letter-spacing: 0.02em; line-height: 1.1; }
+.chip p { margin: 2px 0 0; font-size: 12px; color: var(--dim); }
+.btns { display: flex; gap: 8px; pointer-events: auto; }
+button {
+  font: 700 13px/1 var(--body); color: var(--ink);
+  background: var(--glass); border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 12px; min-height: 40px; cursor: pointer;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+button:focus-visible, input:focus-visible { outline: 2px solid var(--hot); outline-offset: 2px; }
+button.on { border-color: var(--hot); color: var(--hot); }
+.drawer {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  padding-top: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: var(--glass); border-top: 1px solid var(--line);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  max-height: 55%; overflow-y: auto;
+}
+.drawer-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.drawer-head h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 14px; letter-spacing: 0.06em; }
+.drawer-head span { font-size: 12px; color: var(--dim); }
+.knobs { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 18px; max-width: 900px; }
+.knob { display: grid; grid-template-columns: 92px 1fr auto; align-items: center; gap: 10px; min-width: 0; }
+.knob label { font-size: 13px; font-weight: 700; }
+.knob output { font: 12px var(--mono); color: var(--dim); min-width: 3.5em; text-align: right; font-variant-numeric: tabular-nums; }
+.knob input[type=range] { width: 100%; accent-color: var(--hot); min-width: 0; }.knob input[type=color] { width: 44px; height: 30px; border: 1px solid var(--line); border-radius: 8px; background: none; padding: 0; }
+.knob .note { font-size: 12px; color: var(--dim); grid-column: 2 / 4; }
+.tag { display: inline-block; font: 10px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 6px; border-radius: 6px; border: 1px solid var(--line); color: var(--dim); margin-left: 6px; vertical-align: middle; }
+.tag.music { border-color: var(--hot); color: var(--hot); }
+.beat { display: flex; align-items: center; gap: 10px; grid-column: 1 / -1; padding-top: 4px; border-top: 1px solid var(--line); margin-top: 4px; }
+.beat .bpm { font: 700 20px var(--mono); font-variant-numeric: tabular-nums; min-width: 3ch; }
+.beat .lamp { width: 12px; height: 12px; border-radius: 50%; background: var(--hot); opacity: 0.2; }
+.beat small { color: var(--dim); font-size: 12px; }
+.sheet {
+  position: fixed; inset: 0; display: grid; place-items: center;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  background: rgba(4, 3, 8, 0.72);
+}
+.sheet .card { background: #120e1e; border: 1px solid var(--line); border-radius: 14px; width: min(760px, 100%); max-height: 100%; display: flex; flex-direction: column; min-width: 0; }
+.sheet header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.sheet header h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 15px; }
+.sheet .explain { margin: 0; padding: 10px 14px 0; color: var(--dim); font-size: 13px; max-width: 65ch; }
+.sheet pre { margin: 0; padding: 12px 14px 16px; overflow: auto; font: 12px/1.5 var(--mono); color: var(--ink); white-space: pre; }
+.hint {
+  position: fixed; left: 50%; top: 42%; transform: translate(-50%, -50%);
+  font-family: var(--display); font-size: 15px; letter-spacing: 0.04em; text-align: center;
+  color: var(--ink); text-shadow: 0 0 12px rgba(255, 63, 180, 0.8);
+  pointer-events: none; transition: opacity 0.6s; width: min(90%, 420px);
+}
+.err { position: fixed; inset: auto 16px 50% 16px; background: #2a0c18; border: 1px solid var(--hot); border-radius: 12px; padding: 14px; font-size: 14px; }
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { .hint { transition: none; } }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; grid-column: 2 / 4; }
+.seg button { min-height: 34px; padding: 7px 10px; font-size: 12px; }
+.knob.wide { grid-column: 1 / -1; }
+.knob .act { grid-column: 2 / 4; justify-self: start; }
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { .hint { transition: none; } }
+</style>
+
+</head>
+<body>
+<canvas id="stage" aria-label="Lightning Fingers 2: a plasma globe under your fingers. Touch and a crackling filament reaches from the glowing core to each finger, fingers close together arc to each other, and every touch plays a note of the current chord."></canvas>
+
+<div class="top">
+  <div class="chip">
+    <h1>Lightning Fingers 2</h1>
+    <p>An ISF shader toy for House Party</p>
+  </div>
+  <div class="btns">
+    <button id="toggleKnobs" class="on" aria-expanded="true" aria-controls="drawer">Knobs</button>
+    <button id="showSource" aria-haspopup="dialog">ISF file</button>
+  </div>
+</div>
+
+<div class="hint" id="hint">Touch anywhere</div>
+
+<section class="drawer" id="drawer" aria-label="Knobs">
+  <div class="drawer-head">
+    <h2>KNOBS</h2>
+    <span>Built automatically from the ISF file's header</span>
+  </div>
+  <div class="knobs" id="knobs"></div>
+</section>
+
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden>
+  <div class="card">
+    <header>
+      <h2 id="sheetTitle">lightning-fingers-2.fs</h2>
+      <div class="btns"><button id="copySrc">Copy</button><button id="closeSheet">Close</button></div>
+    </header>
+    <p class="explain">This is the whole visual: a JSON header listing its knobs and its two passes, then the shader. Pass 1 draws every filament into a screen-sized glow buffer that fades a little each frame, so moving fingers leave plasma trails. Each bolt is a main filament, a thinner twin and a fork that jumps on every strike; the Plasma or lightning knob blends a slow smooth wander with straight-line zigzags. Pass 2 paints the sky in the current chord's colour and the electricity in its complement. On the party screen, House Party would turn the same knobs from the music instead of your fingers.</p>
+    <pre id="srcView"></pre>
+  </div>
+</div>
+
+<script id="isf-source" type="x-shader/x-fragment">/*{
+ "DESCRIPTION": "Lightning Fingers 2: a plasma globe under your fingers. Every bolt is a simulated chain of points (springs plus drifting noise plus crackle kicks) that the page moves and the shader draws as glowing wire. Fingers close together arc to each other; let go and the spark spirals home. Background and bolts are complementary colours that follow the chord. Before each chord change the globe charges up, then lets go in one discharge; the electrode is round for a major chord and star-ridged for a minor one.",
+ "CREDIT": "Reimagined from Jon's Lightning Fingers (jonashw/p5js_lightning_fingers) for House Party",
+ "ISFVSN": "2",
+ "CATEGORIES": [
+  "Generator",
+  "House Party toy",
+  "Kids toy"
+ ],
+ "INPUTS": [
+  {
+   "NAME": "finger0",
+   "LABEL": "Finger 1",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ]
+  },
+  {
+   "NAME": "finger1",
+   "LABEL": "Finger 2",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ]
+  },
+  {
+   "NAME": "finger2",
+   "LABEL": "Finger 3",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ]
+  },
+  {
+   "NAME": "finger3",
+   "LABEL": "Finger 4",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ]
+  },
+  {
+   "NAME": "finger4",
+   "LABEL": "Finger 5",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ]
+  },
+  {
+   "NAME": "finger5",
+   "LABEL": "Finger 6",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ]
+  },
+  {
+   "NAME": "finger6",
+   "LABEL": "Finger 7",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ]
+  },
+  {
+   "NAME": "finger7",
+   "LABEL": "Finger 8",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ]
+  },
+  {
+   "NAME": "finger8",
+   "LABEL": "Finger 9",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ]
+  },
+  {
+   "NAME": "finger9",
+   "LABEL": "Finger 10",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ]
+  },
+  {
+   "NAME": "orb0",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ],
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "orb1",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ],
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "orb2",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ],
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "orb3",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ],
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "orb4",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ],
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "orb5",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ],
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "orb6",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ],
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "orb7",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ],
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "orb8",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ],
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "orb9",
+   "TYPE": "point2D",
+   "DEFAULT": [
+    -1.0,
+    -1.0
+   ],
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "chains",
+   "TYPE": "image",
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "chainCount",
+   "TYPE": "float",
+   "DEFAULT": 0.0,
+   "MIN": 0.0,
+   "MAX": 64.0,
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "sound",
+   "LABEL": "Sound",
+   "TYPE": "long",
+   "DEFAULT": 0,
+   "VALUES": [
+    0,
+    1
+   ],
+   "LABELS": [
+    "Music + zaps",
+    "Zaps only"
+   ]
+  },
+  {
+   "NAME": "indicator",
+   "LABEL": "Chord signs",
+   "TYPE": "long",
+   "DEFAULT": 0,
+   "VALUES": [
+    0,
+    1,
+    2
+   ],
+   "LABELS": [
+    "Electrode",
+    "Neon lamps",
+    "Both"
+   ]
+  },
+  {
+   "NAME": "glowAmt",
+   "LABEL": "Glow",
+   "TYPE": "float",
+   "DEFAULT": 0.75,
+   "MIN": 0.0,
+   "MAX": 1.5
+  },
+  {
+   "NAME": "afterglow",
+   "LABEL": "Afterglow",
+   "TYPE": "float",
+   "DEFAULT": 0.7,
+   "MIN": 0.0,
+   "MAX": 0.95
+  },
+  {
+   "NAME": "skyFlash",
+   "LABEL": "Sky flash",
+   "TYPE": "float",
+   "DEFAULT": 0.4,
+   "MIN": 0.0,
+   "MAX": 1.0
+  },
+  {
+   "NAME": "key",
+   "LABEL": "Colour",
+   "TYPE": "float",
+   "DEFAULT": 0.62,
+   "MIN": 0.0,
+   "MAX": 1.0,
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "energy",
+   "TYPE": "float",
+   "DEFAULT": 0.0,
+   "MIN": 0.0,
+   "MAX": 1.0,
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "flash",
+   "TYPE": "float",
+   "DEFAULT": 0.0,
+   "MIN": 0.0,
+   "MAX": 1.0,
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "coreFlash",
+   "TYPE": "float",
+   "DEFAULT": 0.0,
+   "MIN": 0.0,
+   "MAX": 1.0,
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "jar",
+   "TYPE": "float",
+   "DEFAULT": 0.0,
+   "MIN": 0.0,
+   "MAX": 1.0,
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "charge",
+   "TYPE": "float",
+   "DEFAULT": 0.0,
+   "MIN": 0.0,
+   "MAX": 1.0,
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "minor",
+   "TYPE": "float",
+   "DEFAULT": 1.0,
+   "MIN": 0.0,
+   "MAX": 1.0,
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "lamp0",
+   "TYPE": "color",
+   "DEFAULT": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "lamp1",
+   "TYPE": "color",
+   "DEFAULT": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "lamp2",
+   "TYPE": "color",
+   "DEFAULT": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "lamp3",
+   "TYPE": "color",
+   "DEFAULT": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "detail",
+   "TYPE": "float",
+   "DEFAULT": 1.0,
+   "MIN": 0.3,
+   "MAX": 1.0,
+   "HOUSEPARTY_HIDDEN": true
+  },
+  {
+   "NAME": "pulse",
+   "LABEL": "Beat pulse",
+   "TYPE": "float",
+   "DEFAULT": 0.0,
+   "MIN": 0.0,
+   "MAX": 1.0
+  }
+ ],
+ "PASSES": [
+  {
+   "TARGET": "glow",
+   "PERSISTENT": true,
+   "WIDTH": "floor($WIDTH * $detail)",
+   "HEIGHT": "floor($HEIGHT * $detail)"
+  },
+  {}
+ ]
+}*/
+// ---- Lightning Fingers 2 ----
+// The bolts are simulated by the page, not invented per pixel: each one is a chain of 24 points pinned at
+// both ends, pulled straight by springs, pushed sideways by drifting noise and kicked by small random
+// impulses (the crackle). Every point keeps its speed from frame to frame, so the wire never jumps.
+// The page packs the chains into the "chains" image, one row per chain:
+//   columns 0-23 = the points, 24-31 = bounding boxes of four stretches of the chain (so a pixel far
+//   from a stretch skips it), 32 = width, brightness, glow size.  x and y are 16-bit, (v + 0.5) / 2.
+// Pass 1 draws the chains into a "glow" target that fades a little each frame (r = bright cores,
+// g = soft glow). Pass 2 paints the sky in the chord's colour, the electricity in its complement
+// and the glass jar.
+// Chord changes: "charge" (0..1) builds over the last 2 seconds before a change and drops to 0 on the
+// discharge; "minor" (0..1) shapes the electrode (round = major chord, star-ridged = minor).
+// Units: short sides of the screen, centred on the middle (same look on phone, tablet and Wall).
+
+const float COLS = 33.0;
+const float ROWS = 64.0;
+
+float h21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float sn(vec2 p) {
+  vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y) - 0.5;
+}
+float sdSeg(vec2 p, vec2 a, vec2 b) {
+  vec2 pa = p - a, ba = b - a;
+  float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-9), 0.0, 1.0);
+  return length(pa - ba * h);
+}
+vec2 toUnits(vec2 n) { return (n - 0.5) * RENDERSIZE / min(RENDERSIZE.x, RENDERSIZE.y); }
+vec4 cell(float col, float row) { return IMG_NORM_PIXEL(chains, vec2((col + 0.5) / COLS, (row + 0.5) / ROWS)); }
+float d16(vec2 v) { return (floor(v.x * 255.0 + 0.5) * 256.0 + floor(v.y * 255.0 + 0.5)) / 65535.0 * 2.0 - 0.5; }
+vec2 pt(float col, float row) { vec4 c = cell(col, row); return toUnits(vec2(d16(c.rg), d16(c.ba))); }
+
+void ball(vec2 p, vec2 q, float r, float k, inout vec2 c, float px) {
+  float d = length(p - q);
+  c.x += k * clamp((r - d) / px + 0.5, 0.0, 1.0);
+  c.y += k * exp(-max(d - r, 0.0) / (r * 1.5 + 0.01)) * 0.9;
+}
+vec3 hsl2rgb(float h, float s, float l) {
+  vec3 rgb = clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+  float c = (1.0 - abs(2.0 * l - 1.0)) * s;
+  return l + c * (rgb - 0.5);
+}
+vec2 fingerAt(int i) {
+  if (i == 0) return finger0; if (i == 1) return finger1; if (i == 2) return finger2; if (i == 3) return finger3; if (i == 4) return finger4;
+  if (i == 5) return finger5; if (i == 6) return finger6; if (i == 7) return finger7; if (i == 8) return finger8; return finger9;
+}
+vec4 lampAt(int i) { if (i == 0) return lamp0; if (i == 1) return lamp1; if (i == 2) return lamp2; return lamp3; }
+vec2 orbAt(int i) {
+  if (i == 0) return orb0; if (i == 1) return orb1; if (i == 2) return orb2; if (i == 3) return orb3; if (i == 4) return orb4;
+  if (i == 5) return orb5; if (i == 6) return orb6; if (i == 7) return orb7; if (i == 8) return orb8; return orb9;
+}
+
+void main() {
+  float px = 1.0 / min(RENDERSIZE.x, RENDERSIZE.y);
+  vec2 p = toUnits(isf_FragNormCoord);
+  // The core is the electrode. Charge swells it before a chord change; minor (0..1) grows ridges on it,
+  // so a round electrode = a major chord, a star-ridged one = a minor chord.
+  float coreR = 0.045 * (1.0 + 0.25 * energy + 0.5 * coreFlash + 0.2 * pulse + 0.45 * charge);
+  float th = atan(p.y, p.x);
+  float ridges = 1.0 + minor * 0.28 * pow(abs(cos(3.0 * th + TIME * 0.4)), 3.0) - minor * 0.08;
+
+  if (PASSINDEX == 0) {
+    vec2 c = vec2(0.0);
+    for (int r = 0; r < 64; r++) {
+      float row = float(r);
+      if (row >= chainCount) break;
+      vec4 prm = cell(32.0, row);
+      float w = prm.r * 0.012, k = prm.g * 1.5, gr = 0.008 + prm.b * 0.03;
+      float reach = w + 3.5 * gr;
+      float d = 1e3;
+      for (int s = 0; s < 4; s++) {
+        float fs = float(s);
+        vec2 lo = pt(24.0 + fs * 2.0, row), hi = pt(25.0 + fs * 2.0, row);
+        vec2 q = max(max(lo - p, p - hi), 0.0);
+        if (length(q) > reach) continue;   // this stretch of the chain is too far away to light this pixel
+        vec2 a = pt(fs * 6.0, row);
+        for (int j = 1; j <= 6; j++) {
+          float col = fs * 6.0 + float(j);
+          if (col > 23.0) break;
+          vec2 b = pt(col, row);
+          d = min(d, sdSeg(p, a, b));
+          a = b;
+        }
+      }
+      if (d > reach) continue;
+      c.x += k * clamp((w - d) / px + 0.5, 0.0, 1.0);
+      c.y += k * exp(-d / gr) * 0.7;
+    }
+    for (int i = 0; i < 10; i++) { vec2 F = fingerAt(i); if (F.x < 0.0) break; ball(p, toUnits(F), 0.016, 0.9, c, px); }
+    for (int i = 0; i < 10; i++) { vec2 F = orbAt(i); if (F.x < 0.0) break; ball(p, toUnits(F), 0.011, 1.0, c, px); }
+    // The core: a ball of plasma that swirls, swells with more fingers and flashes when a spark lands.
+    float r = length(p);
+    float swirl = sn(vec2(atan(p.y, p.x) * 2.0 + TIME * 1.5, r * 30.0 - TIME * 3.0)) * 0.35;
+    float er = coreR * ridges * (1.0 + swirl * 0.3 * (1.0 - 0.6 * minor));
+    c.x += clamp((er - r) / px + 0.5, 0.0, 1.0);
+    // While charging the core's halo grows and flickers faster; it all lets go on the discharge flash.
+    float chFlick = 1.0 + charge * 0.5 * sn(vec2(TIME * 25.0, 3.0));
+    c.y += exp(-max(r - er, 0.0) / (0.03 + 0.05 * energy + 0.08 * coreFlash + 0.07 * charge)) * (0.55 + 0.45 * coreFlash + 0.4 * charge) * chFlick;
+    vec4 prev = IMG_NORM_PIXEL(glow, isf_FragNormCoord);
+    gl_FragColor = vec4(max(min(c.x, 1.0), prev.r * afterglow * 0.3), max(min(c.y * 0.8, 1.0), prev.g * afterglow), 0.0, 1.0);
+    return;
+  }
+
+  vec4 g = IMG_NORM_PIXEL(glow, isf_FragNormCoord);
+  float r = length(p);
+  // While charging, the sky dims a little toward the core (the globe draws in), then the discharge lights it.
+  float bgL = (0.17 + 0.09 * energy) * (1.0 - 0.25 * charge) + 0.12 * flash * skyFlash + 0.13 * exp(-r * 2.2);
+  vec3 bg = hsl2rgb(key, 0.85, bgL);
+  vec3 fg = hsl2rgb(fract(key + 0.5), 1.0, 0.6);
+  // Glow tints the sky toward the complement; the cores are the complement run white-hot.
+  vec3 col = mix(bg, fg, clamp(g.g * glowAmt, 0.0, 1.0)) + fg * 0.25 * g.g * glowAmt;
+  col = mix(col, mix(fg, vec3(1.0), 0.45), clamp(g.r, 0.0, 1.0));
+  col = mix(col, vec3(1.0), (0.8 + 0.2 * charge) * smoothstep(coreR * ridges * (0.75 + 0.15 * charge), coreR * 0.1, r));   // white-hot heart, hotter while charging
+  // The jar: tap the core and a glass globe appears; sparks stay inside it.
+  float ring = 0.44;
+  float glass = jar * (exp(-abs(r - ring) / 0.004) * 0.5 + smoothstep(ring, ring - 0.2, r) * 0.05 * (0.5 + 0.5 * p.y / ring));
+  col += vec3(glass) * mix(vec3(1.0), fg, 0.3);
+
+  col *= 1.0 - 0.25 * smoothstep(0.5, 1.1, r);
+  // Neon-lamp base (indicator 1 or 2): a black plastic base along the bottom edge, like the one a plasma
+  // ball sits on, with four orange neon bulbs, one per chord. Round bulb = major chord, pill = minor.
+  // Bulbs are spaced by the chords' roots on the circle of fifths (F C G . A), so near chords sit close.
+  // lampN = (x position, minor 0/1, glow 0..1, 0). The lit bulb is the chord now; the next one flickers
+  // more and more as the globe charges.
+  if (indicator > 0) {
+    float yb = -0.5 * RENDERSIZE.y / min(RENDERSIZE.x, RENDERSIZE.y);
+    float bh = 0.1, top = yb + bh;
+    vec2 q = p - vec2(0.0, yb);
+    float halfW = 0.36 - 0.06 * clamp(q.y / bh, 0.0, 1.0);   // a little narrower at the top
+    float inBase = clamp((halfW - abs(q.x)) / px + 0.5, 0.0, 1.0) * clamp((top - p.y) / px + 0.5, 0.0, 1.0);
+    vec3 plastic = vec3(0.035, 0.035, 0.045) + vec3(0.09) * exp(-abs(p.y - top + 0.006) / 0.004);   // glossy top edge
+    col = mix(col, plastic, inBase);
+    for (int i = 0; i < 4; i++) {
+      vec4 L = lampAt(i);
+      vec2 lc = vec2(L.x, yb + 0.05);
+      vec2 d = p - lc;
+      // round bulb, or a pill (flat-topped capsule) for a minor chord
+      float shape = L.y > 0.5 ? length(vec2(max(abs(d.x) - 0.012, 0.0), d.y)) - 0.011 : length(d) - 0.014;
+      float glass = clamp(-shape / px + 0.5, 0.0, 1.0);
+      vec3 neon = vec3(1.0, 0.42, 0.08);
+      vec3 bulb = mix(vec3(0.16, 0.07, 0.04), mix(neon, vec3(1.0, 0.85, 0.6), 0.5 * L.z), L.z);
+      col = mix(col, bulb, glass);
+      col += neon * L.z * exp(-max(shape, 0.0) / 0.012) * 0.6;
+    }
+  }
+  gl_FragColor = vec4(col, 1.0);
+}
+</script>
+
+<script>
+(() => {
+  const src = document.getElementById('isf-source').textContent.trim();
+  document.getElementById('srcView').textContent = src;
+
+  // ---------- A tiny ISF loader, now with PASSES ----------
+  function parseISF(text) {
+    const m = text.match(/^\s*\/\*\s*(\{[\s\S]*?\})\s*\*\//);
+    if (!m) throw new Error('No ISF header found.');
+    return { meta: JSON.parse(m[1]), body: text.slice(m[0].length) };
+  }
+  const GLSL_TYPE = { float: 'float', bool: 'bool', long: 'int', event: 'bool', color: 'vec4', point2D: 'vec2' };
+
+  const canvas = document.getElementById('stage');
+  const gl = canvas.getContext('webgl', { antialias: false, preserveDrawingBuffer: false });
+  function fail(msg) {
+    const box = document.createElement('div');
+    box.className = 'err';
+    box.textContent = msg;
+    document.body.appendChild(box);
+  }
+  if (!gl) { fail('This browser has WebGL turned off, so the visual cannot draw. Try Chrome or Safari with hardware acceleration on.'); return; }
+
+  const { meta, body } = parseISF(src);
+  const inputs = meta.INPUTS || [];
+  const passes = meta.PASSES && meta.PASSES.length ? meta.PASSES : [{}];
+  const targets = [...new Set(passes.filter(p => p.TARGET).map(p => p.TARGET))];   // several passes may draw the same target in turn
+
+  // ISF hosts rewrite a few helper calls before compiling.
+  const rewritten = body
+    .replace(/IMG_SIZE\(\s*(\w+)\s*\)/g, '_$1_imgSize')
+    .replace(/IMG_NORM_PIXEL\(\s*(\w+)\s*,/g, 'texture2D($1,')
+    .replace(/IMG_PIXEL\(\s*(\w+)\s*,\s*([^)]+)\)/g, 'texture2D($1, ($2) / _$1_imgSize)');
+  const fragHeader = [
+    '#ifdef GL_FRAGMENT_PRECISION_HIGH', 'precision highp float;', '#else', 'precision mediump float;', '#endif',
+    'uniform vec2 RENDERSIZE;', 'uniform float TIME;', 'uniform float TIMEDELTA;', 'uniform int FRAMEINDEX;', 'uniform int PASSINDEX;', 'varying vec2 isf_FragNormCoord;',
+    ...inputs.filter(i => i.TYPE !== 'image').map(i => `uniform ${GLSL_TYPE[i.TYPE] || 'float'} ${i.NAME};`),
+    ...inputs.filter(i => i.TYPE === 'image').map(i => `uniform sampler2D ${i.NAME}; uniform vec2 _${i.NAME}_imgSize;`),
+    ...targets.map(t => `uniform sampler2D ${t}; uniform vec2 _${t}_imgSize;`)
+  ].join('\n');
+  const vert = 'attribute vec2 p; varying vec2 isf_FragNormCoord; void main(){ isf_FragNormCoord = p * 0.5 + 0.5; gl_Position = vec4(p, 0.0, 1.0); }';
+
+  function compile(type, code) {
+    const sh = gl.createShader(type);
+    gl.shaderSource(sh, code);
+    gl.compileShader(sh);
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh));
+    return sh;
+  }
+  function link(fs) {
+    const pr = gl.createProgram();
+    gl.attachShader(pr, compile(gl.VERTEX_SHADER, vert));
+    gl.attachShader(pr, compile(gl.FRAGMENT_SHADER, fs));
+    gl.linkProgram(pr);
+    if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(pr));
+    return pr;
+  }
+  let prog, copyProg;
+  try {
+    prog = link(fragHeader + '\n' + rewritten);
+    // Used to keep a persistent grid's contents when the screen rotates.
+    copyProg = link('precision mediump float; uniform sampler2D src; varying vec2 isf_FragNormCoord; void main(){ gl_FragColor = texture2D(src, isf_FragNormCoord); }');
+  } catch (e) { fail('The shader did not compile: ' + e.message); return; }
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  [prog, copyProg].forEach(pr => {
+    const loc = gl.getAttribLocation(pr, 'p');
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  });
+  gl.useProgram(prog);
+  // Uniform locations, looked up once per program.
+  const ulocs = new Map();
+  const U = n => { let m = ulocs.get(prog); if (!m) ulocs.set(prog, m = {}); if (!(n in m)) m[n] = gl.getUniformLocation(prog, n); return m[n]; };
+  // HOUSEPARTY_VARIANT (opt-in): names a long input, e.g. "scene". The page then also compiles one program per
+  // value of that input, with "#define HP_VARIANT <value>" in front, and draws with the one for the current value.
+  // The shader stays one source; with HP_VARIANT defined it can make that input a constant, so the compiler drops
+  // every other scene's code and each program is small and fast. Hosts without this (the rack, other ISF apps)
+  // just compile the whole shader as before. Variants compile in the background, one every few frames.
+  const variantIn = meta.HOUSEPARTY_VARIANT && inputs.find(i => i.NAME === meta.HOUSEPARTY_VARIANT);
+  const fullProg = prog, variants = new Map();
+  function variantProg(v, build) {
+    if (variants.has(v)) return variants.get(v);
+    if (!build) return null;
+    let pr = null;
+    try {
+      pr = link(fragHeader + '\n#define HP_VARIANT ' + (v | 0) + '\n' + rewritten);
+      const loc = gl.getAttribLocation(pr, 'p');
+      gl.enableVertexAttribArray(loc);
+      gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    } catch (e) { pr = fullProg; }
+    variants.set(v, pr);
+    return pr;
+  }
+  let variantTick = 0;
+  function pickProg() {
+    if (!variantIn) return;
+    const v = +val[variantIn.NAME] | 0;
+    // the one needed now: build it if missing (a short hitch once); otherwise warm up one other every 8 frames
+    prog = variantProg(v, true) || fullProg;
+    if (++variantTick % 8 === 0) {
+      const todo = (variantIn.VALUES || []).find(x => !variants.has(x));
+      if (todo !== undefined) variantProg(todo, true);
+    }
+  }
+  const uTime = () => U('TIME'), uDelta = () => U('TIMEDELTA'), uSize = () => U('RENDERSIZE'), uFrame = () => U('FRAMEINDEX'), uPass = () => U('PASSINDEX');
+
+  // ---------- Render targets (ping-pong pairs, so a pass can read last frame) ----------
+  // ISF "FLOAT": true on a pass asks for a half-float target (needed by simulations); 8-bit when the device can't.
+  const halfExt = gl.getExtension('OES_texture_half_float');
+  const halfLinear = !!gl.getExtension('OES_texture_half_float_linear');
+  gl.getExtension('EXT_color_buffer_half_float');
+  let halfOK = !!halfExt;
+  function makeTex(w, h, float) {
+    const t = gl.createTexture();
+    const fb = gl.createFramebuffer();
+    const useHalf = float && halfOK;
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, useHalf ? halfExt.HALF_FLOAT_OES : gl.UNSIGNED_BYTE, null);
+    const filt = useHalf && !halfLinear ? gl.NEAREST : gl.LINEAR;
+    [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER].forEach(k => gl.texParameteri(gl.TEXTURE_2D, k, filt));
+    [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T].forEach(k => gl.texParameteri(gl.TEXTURE_2D, k, gl.CLAMP_TO_EDGE));
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+    if (useHalf && gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
+      halfOK = false; gl.deleteFramebuffer(fb); gl.deleteTexture(t); return makeTex(w, h, false);
+    }
+    gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+    return { t, fb };
+  }
+  const T = {};
+  targets.forEach((name, k) => { T[name] = { w: 0, h: 0, read: null, write: null, unit: k, uS: U(name), uSz: U('_' + name + '_imgSize') }; });
+
+  // WIDTH/HEIGHT expressions use $WIDTH/$HEIGHT in CSS pixels, so the grid stays the same
+  // when the page lowers its drawing resolution to keep up on a slow phone.
+  function evalSize(expr, W, H) {
+    if (expr === undefined) return null;
+    const js = String(expr).replace(/\$WIDTH/g, W).replace(/\$HEIGHT/g, H)
+      .replace(/\$(\w+)/g, (_, n) => +val[n] || 0).replace(/\b(floor|ceil|round|max|min|abs|pow|sqrt)\b/g, 'Math.$1');
+    if (!/^[\d\s.+\-*/(),Math.a-z]*$/.test(js)) return null;
+    return Math.max(1, Math.round(Function('return (' + js + ')')()));
+  }
+  function sizeTargets() {
+    const W = canvas.clientWidth, H = canvas.clientHeight;
+    passes.forEach(p => {
+      if (!p.TARGET) return;
+      const t = T[p.TARGET];
+      const w = evalSize(p.WIDTH, W, H) || canvas.width, h = evalSize(p.HEIGHT, W, H) || canvas.height;
+      if (w === t.w && h === t.h) return;
+      const old = t.read;
+      const fl = passes.some(q => q.TARGET === p.TARGET && q.FLOAT);
+      t.read = makeTex(w, h, fl); t.write = makeTex(w, h, fl); t.w = w; t.h = h;
+      if (old && p.PERSISTENT) {   // stretch the old grid into the new one
+        gl.useProgram(copyProg);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, t.read.fb);
+        gl.viewport(0, 0, w, h);
+        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, old.t);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        gl.useProgram(prog);
+      }
+    });
+  }
+
+  // ---------- Knob values, one per input ----------
+  const reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const val = {};
+  inputs.forEach(i => { val[i.NAME] = Array.isArray(i.DEFAULT) ? i.DEFAULT.slice() : (i.DEFAULT ?? (i.TYPE === 'event' ? false : 0)); });
+  const TOUCH_NOTE = "Up to {n} fingers; close fingers arc to each other";
+  
+
+  // House Party extension (ignored by other ISF hosts): an event marked HOUSEPARTY_TICKS
+  // gets no control; the host fires it as many times a second as the named knob says.
+  const ticks = inputs.filter(i => i.HOUSEPARTY_TICKS);
+  // Image inputs: the toy's own script fills imageTex[name] = { t, w, h } (for example, text drawn on a canvas).
+  const imageTex = {};
+  const MUSIC = new Set(['pulse', 'beat']);   // turned by the beat clock here, by the bridge at a party
+  const fired = new Set();                    // events to send as true on the next frame only
+
+  // ---------- Build controls from the header ----------
+  const knobs = document.getElementById('knobs');
+  const outputs = {};
+  const manual = {};
+  const pts = inputs.filter(x => x.TYPE === 'point2D' && /^finger\d$/.test(x.NAME));
+  inputs.forEach(i => {
+    if (i.TYPE === 'image' || i.HOUSEPARTY_HIDDEN || i.HOUSEPARTY_TICKS || (i.TYPE === 'event' && (MUSIC.has(i.NAME) || !i.LABEL))) return;   // unlabelled events are fired by the page itself
+    if (i.TYPE === 'point2D' && pts[0] !== i) return;   // one row for all fingers; finger speeds get none
+    const row = document.createElement('div');
+    row.className = 'knob';
+    const id = 'k-' + i.NAME;
+    const lab = document.createElement('label');
+    lab.htmlFor = id;
+    lab.textContent = i.LABEL || i.NAME;
+    row.appendChild(lab);
+    if (i.TYPE === 'float') {
+      const r = document.createElement('input');
+      r.type = 'range'; r.id = id; r.min = i.MIN; r.max = i.MAX; r.step = (i.MAX - i.MIN) / 200; r.value = val[i.NAME];
+      const o = document.createElement('output');
+      o.htmlFor = id; o.textContent = (+r.value).toFixed(i.MAX - i.MIN < 0.2 ? 3 : 2);
+      outputs[i.NAME] = { r, o };
+      // A knob that runs from negative to positive gets a centre mark and snaps to 0 near the middle.
+      const bipolar = i.MIN < 0 && i.MAX > 0;
+      if (bipolar) {
+        const dl = document.createElement('datalist');
+        dl.id = id + '-ticks'; dl.innerHTML = '<option value="0"></option>';
+        row.appendChild(dl); r.setAttribute('list', dl.id);
+      }
+      r.addEventListener('input', () => {
+        let v = +r.value;
+        if (bipolar && Math.abs(v) < (i.MAX - i.MIN) * 0.03) { v = 0; r.value = 0; }
+        val[i.NAME] = v; o.textContent = v.toFixed(2); manual[i.NAME] = performance.now();
+      });
+      row.append(r, o);
+      if (MUSIC.has(i.NAME)) lab.insertAdjacentHTML('beforeend', '<span class="tag music">beat</span>');
+    } else if (i.TYPE === 'long' && (i.VALUES || []).length > 8) {
+      // A long pick-one list (more than 8 choices) becomes a dropdown.
+      const sel = document.createElement('select');
+      sel.id = id;
+      sel.style.cssText = 'font:inherit;padding:8px 10px;border-radius:10px;background:#1b1b24;color:inherit;border:1px solid #3a3a48;max-width:100%';
+      (i.VALUES || []).forEach((v, k) => { const o = document.createElement('option'); o.value = v; o.textContent = (i.LABELS || [])[k] ?? v; o.selected = v === val[i.NAME]; sel.appendChild(o); });
+      sel.addEventListener('change', () => { val[i.NAME] = +sel.value; });
+      row.appendChild(sel);
+    } else if (i.TYPE === 'long') {
+      // A pick-one input becomes a row of buttons.
+      row.classList.add('wide');
+      const seg = document.createElement('div');
+      seg.className = 'seg'; seg.id = id; seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', i.LABEL || i.NAME);
+      lab.removeAttribute('for');
+      (i.VALUES || []).forEach((v, k) => {
+        const b = document.createElement('button');
+        b.textContent = (i.LABELS || [])[k] ?? v;
+        b.setAttribute('aria-pressed', String(v === val[i.NAME]));
+        b.classList.toggle('on', v === val[i.NAME]);
+        b.addEventListener('click', () => {
+          val[i.NAME] = v;
+          seg.querySelectorAll('button').forEach(x => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); });
+        });
+        seg.appendChild(b);
+      });
+      row.appendChild(seg);
+    } else if (i.TYPE === 'event') {
+      const b = document.createElement('button');
+      b.className = 'act'; b.id = id; b.textContent = i.LABEL || i.NAME;
+      lab.textContent = ''; lab.setAttribute('aria-hidden', 'true');
+      b.addEventListener('click', () => fired.add(i.NAME));
+      row.appendChild(b);
+    } else if (i.TYPE === 'point2D') {
+      lab.textContent = pts.length > 1 ? 'Fingers' : (i.LABEL || i.NAME);
+      lab.insertAdjacentHTML('beforeend', '<span class="tag">touch</span>');
+      const n = document.createElement('span');
+      n.className = 'note'; n.id = id;
+      n.textContent = TOUCH_NOTE.replace('{n}', pts.length);
+      row.append(n);
+    }
+    knobs.appendChild(row);
+  });
+
+  // Beat clock: tap tempo, starts at 124 BPM.
+  const beatRow = document.createElement('div');
+  beatRow.className = 'beat';
+  beatRow.innerHTML = '<span class="lamp" id="lamp"></span><span class="bpm" id="bpm">124</span><small>BPM</small><button id="tap">Tap tempo</button><button id="half">½</button><button id="dbl">×2</button><small id="tapNote">Tap 4 times on the beat</small>';
+  knobs.appendChild(beatRow);
+  let bpm = 124, beat0 = performance.now(), taps = [], lastBeat = -1;
+  const bpmEl = document.getElementById('bpm'), lamp = document.getElementById('lamp');
+  const setBpm = b => { bpm = Math.min(200, Math.max(60, b)); bpmEl.textContent = Math.round(bpm); };
+  document.getElementById('tap').addEventListener('click', () => {
+    const t = performance.now();
+    taps = taps.filter(x => t - x < 2500); taps.push(t);
+    if (taps.length >= 2) {
+      const gaps = taps.slice(1).map((x, k) => x - taps[k]);
+      setBpm(60000 / (gaps.reduce((a, b) => a + b, 0) / gaps.length));
+    }
+    beat0 = t; lastBeat = -1;
+  });
+  document.getElementById('half').addEventListener('click', () => setBpm(bpm / 2));
+  document.getElementById('dbl').addEventListener('click', () => setBpm(bpm * 2));
+
+  // ---------- Lightning Fingers 2: a plasma globe for small hands ----------
+  // Kept from the original: each finger pulls a bolt from the centre, more fingers = more notes of a chord,
+  // let go and a spark flies home, tap the centre to keep the sparks (here: in a glass jar), shake to scatter them.
+  // New: simulated bolts (spring chains, see "Lightning" below), a chord progression (finger angle picks the
+  // chord tone, voices glide to the next chord), a charge-up before each chord change and an electrode whose
+  // shape shows the chord (round = major, star-ridged = minor),
+  // crackle and tremolo for the tingle, haptic buzz that grows with the finger count, arcs between nearby fingers,
+  // colours that follow the chord (background and bolts always complementary).
+  // Grown-ups: add #knobs to the address for the knob drawer. Keys: 1-9, 0 fake fingers, u = jar, space = shake.
+  if (/knobs/.test(location.hash)) document.body.classList.add('grownup');
+  const W = () => canvas.clientWidth, H = () => canvas.clientHeight;
+  const S = () => Math.min(W(), H());
+  // Points in "short side" units around the centre (matches the shader), y up.
+  const toU = (x, y) => ({ x: (x - W() / 2) / S(), y: (H() / 2 - y) / S() });
+  const toNorm = u => [u.x * S() / W() + 0.5, u.y * S() / H() + 0.5];
+  const CORE = 0.045, JAR = 0.44;
+
+  // ---------- Harmony ----------
+  // vi - IV - I - V in C major, all with an added colour note, so every chord shares notes with its neighbours.
+  const CHORDS = [
+    { pcs: [9, 0, 4, 7], root: 9, minor: 1, hue: 0.62 },    // A minor 7: blue sky, orange bolts
+    { pcs: [5, 9, 0, 4], root: 5, minor: 0, hue: 0.86 },    // F major 7: magenta sky, green bolts
+    { pcs: [0, 4, 7, 2], root: 0, minor: 0, hue: 0.06 },    // C add 9: ember sky, cyan bolts
+    { pcs: [7, 11, 2, 4], root: 7, minor: 0, hue: 0.36 }    // G 6: green sky, violet bolts
+  ];
+  // Each chord's place on the circle of fifths (its root; C at the top, one fifth = 30 degrees clockwise).
+  const moonAngle = ch => ((ch.root * 7) % 12) * Math.PI / 6;
+  let chordI = 0, chordClock = 0, quietSince = 0;
+  const CHORD_SECONDS = 7;
+  const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+  // The chord's notes from G3 up to G5, low to high, so going round the core walks up an arpeggio.
+  const ladder = () => { const out = []; for (let m = 55; m <= 79; m++) if (CHORDS[chordI].pcs.includes(m % 12)) out.push(m); return out; };
+  // Angle round the core, starting at the top and going clockwise, picks the rung.
+  function noteFor(u) {
+    const l = ladder();
+    const a = (Math.atan2(u.x, u.y) / (2 * Math.PI) + 1) % 1;
+    return l[Math.min(l.length - 1, Math.floor(a * l.length))];
+  }
+
+  // ---------- Sound ----------
+  // Two buses: "music" (finger voices, the hum of the chord, Tesla zaps) and the zaps (crackle, electric buzz,
+  // snaps, thunder). The Sound knob, or #zaps in the address, turns the music bus off and leaves only the zaps.
+  if (/zaps/.test(location.hash)) val.sound = 1;
+  const musicOn = () => (val.sound | 0) !== 1;
+  let ac = null, bus, music, noiseBuf, drone, crackle, hum;
+  function audio() {
+    if (ac) { if (ac.state === 'suspended') ac.resume(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    ac = new AC();
+    const comp = ac.createDynamicsCompressor();   // keeps ten fingers from getting loud
+    comp.threshold.value = -18; comp.ratio.value = 8;
+    const master = ac.createGain(); master.gain.value = 0.8;
+    bus = ac.createGain(); bus.connect(comp); comp.connect(master); master.connect(ac.destination);
+    music = ac.createGain(); music.gain.value = musicOn() ? 1 : 0; music.connect(bus);
+    noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
+    const ch = noiseBuf.getChannelData(0); for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
+    // Low hum of the globe: root and fifth, louder with more fingers.
+    drone = { g: ac.createGain(), o: [ac.createOscillator(), ac.createOscillator()] };
+    drone.g.gain.value = 0; drone.g.connect(music);
+    drone.o.forEach((o, k) => { o.type = 'sine'; o.frequency.value = mtof(45 + CHORDS[0].root % 12 - 9 + k * 7); o.connect(drone.g); o.start(); });
+    // Crackle: noise through a band-pass, opened in short random bursts.
+    const n = ac.createBufferSource(); n.buffer = noiseBuf; n.loop = true;
+    const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 3200; bp.Q.value = 0.7;
+    crackle = ac.createGain(); crackle.gain.value = 0;
+    n.connect(bp); bp.connect(crackle); crackle.connect(bus); n.start();
+    // Electric buzz: a mains-like 60 Hz sawtooth, band-passed so it sizzles instead of booming.
+    hum = { o: ac.createOscillator(), o2: ac.createOscillator(), f: ac.createBiquadFilter(), g: ac.createGain() };
+    hum.o.type = 'sawtooth'; hum.o.frequency.value = 60; hum.o2.type = 'square'; hum.o2.frequency.value = 120.7;
+    hum.f.type = 'bandpass'; hum.f.frequency.value = 420; hum.f.Q.value = 1.2; hum.g.gain.value = 0;
+    hum.o.connect(hum.f); hum.o2.connect(hum.f); hum.f.connect(hum.g); hum.g.connect(bus); hum.o.start(); hum.o2.start();
+  }
+  // A voice: soft triangle plus a quiet detuned saw, low-passed, with a fast tremolo (the tingle).
+  function makeVoice(midi) {
+    if (!ac) return null;
+    const t = ac.currentTime;
+    const o1 = ac.createOscillator(), o2 = ac.createOscillator(), lp = ac.createBiquadFilter();
+    const trem = ac.createGain(), lfo = ac.createOscillator(), lfoAmt = ac.createGain(), g = ac.createGain(), sawG = ac.createGain();
+    o1.type = 'triangle'; o2.type = 'sawtooth'; o2.detune.value = 7; sawG.gain.value = 0.25;
+    o1.frequency.value = o2.frequency.value = mtof(midi);
+    lp.type = 'lowpass'; lp.Q.value = 3; lp.frequency.value = 900;
+    lfo.frequency.value = 7; lfoAmt.gain.value = 0.22; trem.gain.value = 0.78;
+    lfo.connect(lfoAmt); lfoAmt.connect(trem.gain);
+    o1.connect(lp); o2.connect(sawG); sawG.connect(lp); lp.connect(trem); trem.connect(g); g.connect(music);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.16, t + 0.03);
+    [o1, o2, lfo].forEach(o => o.start(t));
+    return { o1, o2, lp, lfo, g, midi, level: 0.16 };
+  }
+  function voiceTo(v, midi, bright, level) {
+    if (!v) return;
+    const t = ac.currentTime;
+    if (midi !== v.midi) { v.midi = midi; [v.o1, v.o2].forEach(o => o.frequency.setTargetAtTime(mtof(midi), t, 0.04)); }
+    v.lp.frequency.setTargetAtTime(500 + 3200 * bright, t, 0.05);
+    if (level !== v.level) { v.level = level; v.g.gain.setTargetAtTime(level, t, 0.06); }
+  }
+  function voiceOff(v) {
+    if (!v) return;
+    const t = ac.currentTime;
+    v.g.gain.cancelScheduledValues(t); v.g.gain.setTargetAtTime(0, t, 0.12);
+    [v.o1, v.o2, v.lfo].forEach(o => o.stop(t + 1));
+  }
+  // A singing-Tesla-coil zap: a buzzy arc at a chord note, chopped by a fast random "interrupter".
+  // Used when a spark lands in the core and when the jar opens or closes (plasma, not a bell).
+  function teslaZap(midi, vel) {
+    if (!ac) return;
+    const t = ac.currentTime, o = ac.createOscillator(), bp = ac.createBiquadFilter(), g = ac.createGain();
+    const chop = ac.createOscillator(), chopG = ac.createGain(), amp = ac.createGain();
+    o.type = 'sawtooth'; o.frequency.value = mtof(midi + 12);
+    bp.type = 'bandpass'; bp.frequency.value = mtof(midi + 12) * 3; bp.Q.value = 1.5;
+    chop.type = 'square'; chop.frequency.value = 30 + Math.random() * 40; chopG.gain.value = 0.5; amp.gain.value = 0.5;
+    chop.connect(chopG); chopG.connect(amp.gain);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.22 * vel, t + 0.004); g.gain.setTargetAtTime(0, t + 0.03, 0.12);
+    o.connect(bp); bp.connect(amp); amp.connect(g); g.connect(music);
+    o.start(t); chop.start(t); o.stop(t + 1); chop.stop(t + 1);
+  }
+  // A zap: a short bright noise snap (sparks landing, the jar opening and closing).
+  function snap(vel) {
+    if (!ac) return;
+    const t = ac.currentTime, n = ac.createBufferSource(), hp = ac.createBiquadFilter(), g = ac.createGain();
+    n.buffer = noiseBuf; hp.type = 'highpass'; hp.frequency.value = 1800;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.35 * vel, t + 0.002); g.gain.setTargetAtTime(0, t + 0.004, 0.025);
+    n.connect(hp); hp.connect(g); g.connect(bus); n.start(t, Math.random() * 0.5); n.stop(t + 0.3);
+  }
+  // Thunder for a shake: a low noise boom.
+  function thunder() {
+    if (!ac) return;
+    const t = ac.currentTime, n = ac.createBufferSource(), lp = ac.createBiquadFilter(), g = ac.createGain();
+    n.buffer = noiseBuf; n.loop = true; lp.type = 'lowpass'; lp.frequency.value = 180;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.9, t + 0.04); g.gain.setTargetAtTime(0, t + 0.1, 0.5);
+    n.connect(lp); lp.connect(g); g.connect(bus); n.start(t); n.stop(t + 3);
+  }
+
+  // ---------- Haptics: a buzz that comes faster and stronger with more fingers ----------
+  // Many tablets (Kindle Fire included, as far as I know) have no vibration motor; then this does nothing.
+  const canBuzz = typeof navigator.vibrate === 'function';
+  let nextBuzz = 0;
+  // Browsers refuse vibrate until the person has really tapped the page, so wait for that.
+  const buzz = ms => { if (!canBuzz || (navigator.userActivation && !navigator.userActivation.hasBeenActive)) return; try { navigator.vibrate(ms); } catch (_) {} };
+
+  // ---------- Touch ----------
+  const fingers = new Map();   // pointerId -> { u, voice, moved }
+  let keyFingers = [];
+  const orbs = [];             // { r, a (angle), voice, midi, held }
+  let jar = false, coreFlash = 0, energy = 0, flash = 0, fingerSeq = 0, orbSeq = 0;
+  const pt = e => { const r = canvas.getBoundingClientRect(); return toU(e.clientX - r.left, e.clientY - r.top); };
+  const coreHit = u => Math.hypot(u.x, u.y) < Math.max(CORE * 2.2, 40 / S());
+  function release(f) {
+    dropChains(f);
+    const r = Math.hypot(f.u.x, f.u.y);
+    if (r < CORE * 1.5) { voiceOff(f.voice); return; }
+    orbs.push({ r: jar ? Math.min(r, JAR - 0.03) : r, a: Math.atan2(f.u.y, f.u.x), voice: f.voice, midi: f.midi || 60, chain: 'o' + (orbSeq++) });
+    if (orbs.length > 10) land(orbs.shift(), 0.5);
+  }
+  function land(o, vel) { voiceOff(o.voice); teslaZap(o.midi, vel); snap(musicOn() ? 0.4 * vel : vel); coreFlash = 1; buzz(12); chainMap.delete(o.chain); }
+  function toggleJar() {
+    jar = !jar;
+    teslaZap(jar ? 72 : 67, 0.8); snap(musicOn() ? 0.3 : 1); coreFlash = 1;
+    if (jar) orbs.forEach(o => { o.r = Math.min(o.r, JAR - 0.03); });
+  }
+  canvas.addEventListener('pointerdown', e => {
+    audio();
+    const hintEl = document.getElementById('hint'); if (hintEl) hintEl.style.opacity = 0;
+    try { document.fullscreenElement || document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {}); } catch (_) {}
+    canvas.setPointerCapture(e.pointerId);
+    const u = pt(e);
+    if (fingers.size === 0 && performance.now() - quietSince > 1500 && quietSince) { chordI = (chordI + 1) % CHORDS.length; chordClock = 0; }
+    if (coreHit(u)) { toggleJar(); return; }
+    const midi = noteFor(u);
+    fingers.set(e.pointerId, { u, midi, voice: makeVoice(midi), id: 'f' + (fingerSeq++) });
+    buzz(10);
+  });
+  canvas.addEventListener('pointermove', e => { const f = fingers.get(e.pointerId); if (f) f.u = pt(e); });
+  const end = e => {
+    const f = fingers.get(e.pointerId); if (!f) return;
+    f.u = pt(e); fingers.delete(e.pointerId); release(f);
+    if (fingers.size === 0) { quietSince = performance.now(); buzz(0); }
+  };
+  canvas.addEventListener('pointerup', end);
+  canvas.addEventListener('pointercancel', end);
+  document.addEventListener('contextmenu', e => e.preventDefault());
+
+  function shake() {
+    thunder(); coreFlash = 1; flash = 1; buzz([40, 30, 60]);
+    orbs.forEach(o => { o.a = Math.random() * 2 * Math.PI; o.r = (jar ? 0.12 + 0.28 * Math.random() : 0.2 + 0.4 * Math.random()); });
+  }
+  let lastAcc = null, lastShake = 0;
+  window.addEventListener('devicemotion', e => {
+    const a = e.accelerationIncludingGravity; if (!a || a.x == null) return;
+    if (lastAcc) {
+      const change = Math.abs(a.x - lastAcc.x) + Math.abs(a.y - lastAcc.y) + Math.abs((a.z || 0) - (lastAcc.z || 0));
+      const now = performance.now();
+      if (change > 30 && now - lastShake > 600) { lastShake = now; shake(); }
+    }
+    lastAcc = { x: a.x, y: a.y, z: a.z };
+  });
+  const held = new Set();
+  function keyFingersFromHeld() {
+    let n = [...held].map(k => parseInt(k, 10)).filter(k => !isNaN(k))[0];
+    if (n === 0) n = 10;
+    keyFingers.forEach(release); keyFingers = [];
+    if (n === undefined) return;
+    keyFingers = Array.from({ length: n }, (_, i) => { const t = i / n * 2 * Math.PI; const u = { x: 0.33 * Math.sin(t), y: 0.33 * Math.cos(t) }; const midi = noteFor(u); return { u, midi, voice: makeVoice(midi), id: 'f' + (fingerSeq++) }; });
+  }
+  window.addEventListener('keydown', e => {
+    if (e.repeat) return;
+    audio();
+    if (/^[0-9]$/.test(e.key)) { held.add(e.key); keyFingersFromHeld(); }
+    if (e.key === 'u') toggleJar();
+    if (e.key === ' ') { e.preventDefault(); shake(); }
+  });
+  window.addEventListener('keyup', e => { if (held.delete(e.key)) keyFingersFromHeld(); });
+
+  // ---------- Lightning: every bolt is a simulated chain ----------
+  // A chain is 24 points pinned at both ends. Each inner point has a sideways offset and a sideways speed.
+  // Three forces act on it every frame: a spring toward a drifting noise shape (the slow wander and the
+  // jagged kinks), a spring to its neighbours (keeps the wire smooth and passes ripples along it), and damping.
+  // Crackle = small random kicks to the speed of a few neighbouring points, which ripple along the wire.
+  // Because points keep their speed, the wire moves continuously: no frame ever jumps to a new shape.
+  const N = 24, COLS = 33, ROWS = 64;
+  const chainMap = new Map();   // key -> { o, v, seed }
+  const hash = (x, y) => { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); };
+  function noise(x, y) {
+    const ix = Math.floor(x), iy = Math.floor(y); let fx = x - ix, fy = y - iy;
+    fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy);
+    const a = hash(ix, iy), b = hash(ix + 1, iy), c = hash(ix, iy + 1), d = hash(ix + 1, iy + 1);
+    return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy - 0.5;
+  }
+  function chainFor(key) {
+    let ch = chainMap.get(key);
+    if (!ch) { ch = { o: new Float32Array(N), v: new Float32Array(N), seed: Math.random() * 100, live: 0 }; chainMap.set(key, ch); }
+    ch.live = frameNo;
+    return ch;
+  }
+  function dropChains(f) { ['m', 't', 'k'].forEach(s => chainMap.delete(f.id + s)); }
+  let simT = 0, frameNo = 0, kicked = 0;
+  const K = 90, SMOOTH = 260, DAMP = 8;
+  function stepChain(ch, a, b, amp, dt, kicks) {
+    const L = Math.hypot(b.x - a.x, b.y - a.y), A = amp * Math.min(L, 0.6);
+    const o = ch.o, v = ch.v, sd = ch.seed;
+    const sub = 3, h = dt / sub;
+    for (let s = 0; s < sub; s++) {
+      for (let i = 1; i < N - 1; i++) {
+        const u = i / (N - 1), env = Math.sin(Math.PI * u);
+        const target = A * env * (1.4 * noise(u * 2.5 * Math.max(L, 0.3) / 0.3 + sd, simT * 0.55)
+          + 0.9 * noise(u * 6 + sd * 2, simT * 1.4) + 1.1 * noise(u * 11 + sd * 3, simT * 2.4));
+        const acc = K * (target - o[i]) + SMOOTH * (o[i - 1] + o[i + 1] - 2 * o[i]) - DAMP * v[i];
+        v[i] += acc * h;
+      }
+      for (let i = 1; i < N - 1; i++) o[i] += v[i] * h;
+    }
+    // Crackle: a kick to a few neighbouring points; more often with more fingers.
+    if (Math.random() < dt * kicks) {
+      const j = 2 + Math.floor(Math.random() * (N - 4)), imp = (Math.random() - 0.5) * A * 26;
+      for (let m = -3; m <= 3; m++) { const q = j + m; if (q > 0 && q < N - 1) v[q] += imp * Math.exp(-m * m / 3); }
+      if (Math.random() < 0.15) flash = Math.max(flash, 0.5 + 0.5 * Math.random());
+      kicked++;   // the sound of this kick is played once per frame (see "Crackle" in the frame)
+    }
+    o[0] = o[N - 1] = 0;
+    const dx = (b.x - a.x) / (L || 1), dy = (b.y - a.y) / (L || 1);
+    const pts = new Array(N);
+    for (let i = 0; i < N; i++) {
+      const u = i / (N - 1);
+      pts[i] = { x: a.x + (b.x - a.x) * u - dy * o[i], y: a.y + (b.y - a.y) * u + dx * o[i] };
+    }
+    return pts;
+  }
+  // Pack chains into the "chains" image (see the top of the shader for the layout).
+  const texData = new Uint8Array(COLS * ROWS * 4);
+  const chainTex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, chainTex);
+  [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER].forEach(k => gl.texParameteri(gl.TEXTURE_2D, k, gl.NEAREST));
+  [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T].forEach(k => gl.texParameteri(gl.TEXTURE_2D, k, gl.CLAMP_TO_EDGE));
+  imageTex.chains = { t: chainTex, w: COLS, h: ROWS };
+  function put16(off, nx, ny) {
+    const ex = Math.round(Math.min(1, Math.max(0, (nx + 0.5) / 2)) * 65535), ey = Math.round(Math.min(1, Math.max(0, (ny + 0.5) / 2)) * 65535);
+    texData[off] = ex >> 8; texData[off + 1] = ex & 255; texData[off + 2] = ey >> 8; texData[off + 3] = ey & 255;
+  }
+  function packChains(list) {
+    list.forEach((c, row) => {
+      const base = row * COLS * 4;
+      const n = c.pts.map(toNorm);
+      n.forEach((q, i) => put16(base + i * 4, q[0], q[1]));
+      for (let s = 0; s < 4; s++) {
+        let lx = 9, ly = 9, hx = -9, hy = -9;
+        for (let i = s * 6; i <= Math.min(23, s * 6 + 6); i++) { lx = Math.min(lx, n[i][0]); ly = Math.min(ly, n[i][1]); hx = Math.max(hx, n[i][0]); hy = Math.max(hy, n[i][1]); }
+        put16(base + (24 + s * 2) * 4, lx, ly); put16(base + (25 + s * 2) * 4, hx, hy);
+      }
+      const pb = base + 32 * 4;
+      texData[pb] = Math.round(Math.min(1, c.w / 0.012) * 255);
+      texData[pb + 1] = Math.round(Math.min(1, c.k / 1.5) * 255);
+      texData[pb + 2] = Math.round(Math.min(1, Math.max(0, (c.gr - 0.008) / 0.03)) * 255);
+      texData[pb + 3] = 255;
+    });
+    gl.bindTexture(gl.TEXTURE_2D, chainTex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, COLS, ROWS, 0, gl.RGBA, gl.UNSIGNED_BYTE, texData);
+    val.chainCount = list.length;
+  }
+
+  // ---------- Each frame ----------
+  let lastT = performance.now(), slowT = 0, fastT = 0, orbChord = 0;
+  const hueEase = (a, b, k) => { let d = ((b - a + 1.5) % 1) - 0.5; return (a + d * k + 1) % 1; };
+  let charge = 0, lastChord = 0;
+  const lampGlow = [1, 0, 0, 0];
+  if (/lamps/.test(location.hash)) val.indicator = /both/.test(location.hash) ? 2 : 1;
+  // The discharge: the chord changes on one big flash, a snap and a kick to every bolt.
+  function discharge() {
+    flash = 1; coreFlash = 1; charge = 0;
+    snap(1.3); buzz(30);
+    for (const ch of chainMap.values()) for (let i = 1; i < N - 1; i++) ch.v[i] += (Math.random() - 0.5) * 1.6;
+  }
+  const rot = (d, a) => ({ x: d.x * Math.cos(a) - d.y * Math.sin(a), y: d.x * Math.sin(a) + d.y * Math.cos(a) });
+  function toyFrame(now) {
+    const dt = Math.min(now - lastT, 50) / 1000; lastT = now;
+    simT += dt; frameNo++; kicked = 0;
+    // Slow tablet: draw the glow buffer at a lower resolution until frames keep up (and back up when they do).
+    if (dt > 0.034) { slowT += dt; fastT = 0; } else { fastT += dt; slowT = Math.max(0, slowT - dt); }
+    if (slowT > 1 && val.detail > 0.35) { val.detail = Math.max(0.35, val.detail * 0.85); slowT = 0; }
+    if (fastT > 4 && val.detail < 1) { val.detail = Math.min(1, val.detail * 1.1); fastT = 0; }
+    const live = [...fingers.values(), ...keyFingers];
+    const n = live.length;
+    // The chord moves on every few seconds while someone is playing; held notes glide to the new chord.
+    if (n > 0) { chordClock += dt; if (chordClock > CHORD_SECONDS) { chordClock = 0; chordI = (chordI + 1) % CHORDS.length; } }
+    // Sparks keep humming their note; when the chord moves, each slides to the nearest note of the new chord.
+    if (chordI !== orbChord) { orbChord = chordI; const l = ladder(); orbs.forEach(o => { o.midi = l.reduce((b, m) => Math.abs(m - o.midi) < Math.abs(b - o.midi) ? m : b, l[0]); }); }
+    live.forEach(f => {
+      f.midi = noteFor(f.u);
+      const r = Math.min(1, Math.hypot(f.u.x, f.u.y) / 0.5);
+      voiceTo(f.voice, f.midi, r, 0.16 / Math.sqrt(Math.max(1, n)));
+      if (f.voice) f.voice.lfo.frequency.setTargetAtTime(6 + 1.5 * n, ac.currentTime, 0.1);
+    });
+    // Released sparks spiral home, faster as they get close; in the jar they orbit and keep humming.
+    for (let i = orbs.length - 1; i >= 0; i--) {
+      const o = orbs[i];
+      if (jar) { o.a += dt * (0.5 + 0.15 / (o.r + 0.05)); voiceTo(o.voice, o.midi, 0.3, 0.05); }
+      else {
+        o.r *= Math.exp(-dt * 2.4); o.r -= dt * 0.04; o.a += dt * (1.2 / (o.r + 0.08));
+        voiceTo(o.voice, o.midi, 0.2, 0.08 * Math.min(1, o.r * 4));
+        if (o.r < CORE) { orbs.splice(i, 1); land(o, 0.6); }
+      }
+    }
+
+    // ---- Step every chain and collect what to draw ----
+    charge = n > 0 ? Math.max(0, (chordClock - (CHORD_SECONDS - 2)) / 2) : charge * Math.exp(-dt * 3);   // 0..1 over the last 2 s
+    const kicks = (2 + 2.5 * n) * (1 + 3 * charge);
+    const cw = 1 + 0.5 * charge, ck = 1 + 0.4 * charge;   // bolts grow thicker and brighter while charging
+    const draw = [];
+    const fromCore = q => { const l = Math.hypot(q.x, q.y) || 1; return { x: q.x / l * CORE * 0.8, y: q.y / l * CORE * 0.8 }; };
+    live.forEach(f => {
+      const a = fromCore(f.u), b = f.u;
+      const main = stepChain(chainFor(f.id + 'm'), a, b, 0.16, dt, kicks);
+      draw.push({ pts: main, w: 0.0042 * cw, k: 1.0 * ck, gr: 0.016 });
+      draw.push({ pts: stepChain(chainFor(f.id + 't'), a, b, 0.26, dt, kicks * 0.6), w: 0.0022 * cw, k: 0.55 * ck, gr: 0.012 });
+      // A fork grows from a point on the main bolt, lives about a second, fades, then grows somewhere else.
+      if (!f.fork || f.fork.age > f.fork.life) f.fork = { at: 6 + Math.floor(Math.random() * 10), ang: (Math.random() < 0.5 ? -1 : 1) * (0.4 + 0.5 * Math.random()), len: 0.18 + 0.2 * Math.random(), age: 0, life: 0.7 + 0.7 * Math.random() };
+      f.fork.age += dt;
+      const L = Math.hypot(b.x - a.x, b.y - a.y);
+      if (L > 0.08) {
+        const fa = main[f.fork.at], dir = rot({ x: (b.x - a.x) / L, y: (b.y - a.y) / L }, f.fork.ang);
+        const fb = { x: fa.x + dir.x * L * f.fork.len, y: fa.y + dir.y * L * f.fork.len };
+        const fade = Math.sin(Math.PI * Math.min(1, f.fork.age / f.fork.life));
+        draw.push({ pts: stepChain(chainFor(f.id + 'k'), fa, fb, 0.3, dt, kicks * 0.5), w: 0.0024, k: 0.6 * fade, gr: 0.012 });
+      }
+    });
+    orbs.forEach(o => {
+      const q = { x: o.r * Math.cos(o.a), y: o.r * Math.sin(o.a) };
+      draw.push({ pts: stepChain(chainFor(o.chain), fromCore(q), q, 0.2, dt, 3), w: 0.0018, k: 0.7, gr: 0.01 });
+    });
+    // Pairs of fingers close together arc to each other (closest pairs first, six at most).
+    const pairs = [];
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+      const d = Math.hypot(live[i].u.x - live[j].u.x, live[i].u.y - live[j].u.y);
+      if (d < 0.45) pairs.push([d, live[i], live[j]]);
+    }
+    pairs.sort((a, b) => a[0] - b[0]);
+    pairs.slice(0, 6).forEach(([d, f1, f2]) => {
+      const k = Math.max(0, 1 - d / 0.45), key = f1.id + f2.id;
+      draw.push({ pts: stepChain(chainFor(key + 'a'), f1.u, f2.u, 0.3, dt, kicks), w: 0.003, k, gr: 0.013 });
+      draw.push({ pts: stepChain(chainFor(key + 'b'), f1.u, f2.u, 0.4, dt, kicks * 0.6), w: 0.0018, k: 0.6 * k, gr: 0.01 });
+    });
+    for (const [key, ch] of chainMap) if (ch.live !== frameNo) chainMap.delete(key);   // forget chains nobody drew
+    packChains(draw.slice(0, ROWS));
+
+    for (let i = 0; i < 10; i++) {
+      val['finger' + i] = live[i] ? toNorm(live[i].u) : [-1, -1];
+      const o = orbs[i];
+      val['orb' + i] = o ? toNorm({ x: o.r * Math.cos(o.a), y: o.r * Math.sin(o.a) }) : [-1, -1];
+    }
+
+    // ---- Chord changes: charge up over the last 2 seconds, then discharge ----
+    const nextI = (chordI + 1) % CHORDS.length;
+    if (chordI !== lastChord) { lastChord = chordI; discharge(); }
+    val.charge = charge;
+    // Chord signs: the electrode's shape (Electrode, Both) and/or the neon lamps on the base (Neon lamps, Both).
+    const ind = val.indicator | 0;
+    val.minor += ((ind === 1 ? 0 : CHORDS[chordI].minor) - val.minor) * Math.min(1, dt * 3);
+    if (ind > 0) {
+      CHORDS.forEach((ch, i) => {
+        const fifths = ((ch.root * 7 + 1) % 12) - 1;   // F = -1, C = 0, G = 1, A = 3
+        const flicker = i === nextI && charge > 0 ? (Math.random() < 0.25 + 0.7 * charge ? 0.35 + 0.65 * charge : 0) : 0;
+        const want = i === chordI ? 1 : flicker;
+        lampGlow[i] += (want - lampGlow[i]) * (i === nextI ? 1 : Math.min(1, dt * 10));   // neon snaps on and off
+        val["lamp" + i] = [-0.15 + 0.1 * (fifths + 1), ch.minor, lampGlow[i], 0];
+      });
+    }
+
+    energy += (Math.min(1, (n + orbs.length * 0.3) / 5) - energy) * Math.min(1, dt * 4);
+    coreFlash *= Math.exp(-dt * 4);
+    flash *= Math.exp(-dt * 14);
+    val.energy = energy; val.coreFlash = coreFlash; val.flash = flash * Math.min(1, energy * 1.5);
+    val.jar += ((jar ? 1 : 0) - val.jar) * Math.min(1, dt * 5);
+    // The sky leans a little toward the next chord's colour while it charges.
+    const target = hueEase(CHORDS[chordI].hue, CHORDS[nextI].hue, 0.35 * charge);
+    val.key = hueEase(val.key, target, Math.min(1, dt * 1.5));
+    if (ac) {
+      const t = ac.currentTime;
+      drone.g.gain.setTargetAtTime(0.07 * Math.min(1, (n + orbs.length * 0.5) / 2), t, 0.2);
+      drone.o.forEach((o, k) => o.frequency.setTargetAtTime(mtof(33 + CHORDS[chordI].root + k * 7), t, 0.3));
+      const zapsOnly = !musicOn();
+      music.gain.setTargetAtTime(zapsOnly ? 0 : 1, t, 0.05);
+      // Crackle: a snap for every kick you can see ripple down a bolt, plus a few in between.
+      if (kicked > 0 || (n > 0 && Math.random() < dt * (3 + 2 * n))) {
+        const loud = (0.02 + 0.012 * Math.min(n, 6) * Math.random()) * (zapsOnly ? 1.8 : 1) * (1 + 0.3 * Math.min(kicked, 3));
+        crackle.gain.cancelScheduledValues(t); crackle.gain.setValueAtTime(loud, t); crackle.gain.setTargetAtTime(0, t + 0.005, 0.012);
+      }
+      // The buzz grows with the number of fingers; louder when the music is off.
+      hum.g.gain.setTargetAtTime((zapsOnly ? 0.05 : 0.018) * Math.min(1, (n + orbs.length * 0.3) / 3) * (0.8 + 0.4 * flash + 1.2 * charge), t, 0.04);
+      hum.f.frequency.setTargetAtTime(420 + 1500 * charge * charge, t, 0.05);   // the buzz whines upward as it charges
+    }
+    // Haptics: one short buzz per "strike", faster and longer with more fingers.
+    if (n > 0 && now > nextBuzz) { buzz(Math.min(25, 5 + 2 * n)); nextBuzz = now + 1000 / (3 + 2 * n); }
+  }
+
+  // ---------- Buttons ----------
+  const drawer = document.getElementById('drawer'), tk = document.getElementById('toggleKnobs');
+  tk.addEventListener('click', () => {
+    drawer.hidden = !drawer.hidden;
+    tk.classList.toggle('on', !drawer.hidden);
+    tk.setAttribute('aria-expanded', String(!drawer.hidden));
+  });
+  const sheet = document.getElementById('sheet');
+  document.getElementById('showSource').addEventListener('click', () => { sheet.hidden = false; document.getElementById('closeSheet').focus(); });
+  document.getElementById('closeSheet').addEventListener('click', () => { sheet.hidden = true; });
+  sheet.addEventListener('click', e => { if (e.target === sheet) sheet.hidden = true; });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') sheet.hidden = true; });
+  document.getElementById('copySrc').addEventListener('click', async e => {
+    const b = e.currentTarget;
+    try { await navigator.clipboard.writeText(src); b.textContent = 'Copied'; }
+    catch { const sel = getSelection(), range = document.createRange(); range.selectNodeContents(document.getElementById('srcView')); sel.removeAllRanges(); sel.addRange(range); b.textContent = 'Selected'; }
+    setTimeout(() => { b.textContent = 'Copy'; }, 1500);
+  });
+
+  // ---------- Render loop with adaptive resolution ----------
+  let scale = Math.min(window.devicePixelRatio || 1, 1.5), frame = 0, last = performance.now(), slow = 0;
+  const tickAcc = {};
+  function resize() {
+    const w = Math.max(1, Math.round(canvas.clientWidth * scale)), h = Math.max(1, Math.round(canvas.clientHeight * scale));
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+    sizeTargets();
+  }
+  try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(() => {}); } catch (e) {}
+  const t0 = performance.now();
+  function draw(now) {
+    // A toy can cap its frame rate (const TOY_MAX_FPS in its toy.js) to spare the GPU.
+    if (typeof TOY_MAX_FPS !== 'undefined' && now - last < 1000 / TOY_MAX_FPS - 3) { requestAnimationFrame(draw); return; }
+    const dt = now - last; last = now;
+    if (dt > 40) slow++; else slow = Math.max(0, slow - 1);
+    if (slow > 20 && scale > 0.5) { scale *= 0.8; slow = 0; }
+    resize();
+    toyFrame(now, dt);
+
+    // Beat clock: pulse knob and a "beat" event once per beat.
+    const period = 60000 / bpm;
+    const elapsed = now - beat0;
+    const ph = ((elapsed % period) + period) % period / period;
+    const p = Math.pow(1 - ph, 3);
+    if (!(manual.pulse && now - manual.pulse < 3000)) {
+      val.pulse = reduced ? p * 0.4 : p;
+      if (outputs.pulse) { outputs.pulse.r.value = val.pulse; outputs.pulse.o.textContent = val.pulse.toFixed(2); }
+    }
+    const beatNo = Math.floor(elapsed / period);
+    if (beatNo !== lastBeat) { lastBeat = beatNo; fired.add('beat'); }
+    lamp.style.opacity = 0.2 + 0.8 * p;
+
+    // Ticking events fire at their knob's rate.
+    ticks.forEach(i => {
+      tickAcc[i.NAME] = (tickAcc[i.NAME] || 0) + Math.min(dt, 100) / 1000 * (+val[i.HOUSEPARTY_TICKS] || 0);
+      if (tickAcc[i.NAME] >= 1) { tickAcc[i.NAME] = Math.min(tickAcc[i.NAME] - 1, 1); fired.add(i.NAME); }
+    });
+
+    pickProg();
+    gl.useProgram(prog);
+    gl.uniform1f(uTime(), (now - t0) / 1000);
+    gl.uniform1f(uDelta(), Math.min(dt, 100) / 1000);
+    gl.uniform1i(uFrame(), frame);
+    inputs.forEach(i => {
+      if (i.TYPE === 'image') return;
+      const l = U(i.NAME);
+      const v = i.TYPE === 'event' ? fired.has(i.NAME) : val[i.NAME];
+      if (i.TYPE === 'float') gl.uniform1f(l, v);
+      else if (i.TYPE === 'long' || i.TYPE === 'bool' || i.TYPE === 'event') gl.uniform1i(l, +v);
+      else if (i.TYPE === 'color') gl.uniform4f(l, v[0], v[1], v[2], v[3] ?? 1);
+      else if (i.TYPE === 'point2D') gl.uniform2f(l, v[0], v[1]);
+    });
+    fired.clear();
+
+    passes.forEach((ps, k) => {
+      targets.forEach(name => {
+        const t = T[name];
+        gl.activeTexture(gl.TEXTURE0 + t.unit);
+        gl.bindTexture(gl.TEXTURE_2D, t.read.t);
+        gl.uniform1i(t.uS, t.unit);
+        gl.uniform2f(t.uSz, t.w, t.h);
+      });
+      inputs.filter(i => i.TYPE === 'image').forEach((i, n) => {
+        const it = imageTex[i.NAME]; if (!it) return;
+        gl.activeTexture(gl.TEXTURE0 + targets.length + n);
+        gl.bindTexture(gl.TEXTURE_2D, it.t);
+        gl.uniform1i(U(i.NAME), targets.length + n);
+        gl.uniform2f(U('_' + i.NAME + '_imgSize'), it.w, it.h);
+      });
+      gl.uniform1i(uPass(), k);
+      if (ps.TARGET) {
+        const t = T[ps.TARGET];
+        gl.bindFramebuffer(gl.FRAMEBUFFER, t.write.fb);
+        gl.viewport(0, 0, t.w, t.h);
+        gl.uniform2f(uSize(), t.w, t.h);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        [t.read, t.write] = [t.write, t.read];
+      } else {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.uniform2f(uSize(), canvas.width, canvas.height);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+      }
+    });
+    frame++;
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+})();
+</script>
+
+</body>
+</html>
