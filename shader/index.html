@@ -933,6 +933,7 @@ void main() {
   function draw(now) {
     // A toy can cap its frame rate (const TOY_MAX_FPS in its toy.js) to spare the GPU.
     if (typeof TOY_MAX_FPS !== 'undefined' && now - last < 1000 / TOY_MAX_FPS - 3) { requestAnimationFrame(draw); return; }
+    const began = performance.now();
     const dt = now - last; last = now;
     if (dt > 40) slow++; else slow = Math.max(0, slow - 1);
     if (slow > 20 && scale > 0.5) { scale *= 0.8; slow = 0; }
@@ -1004,9 +1005,58 @@ void main() {
         gl.drawArrays(gl.TRIANGLES, 0, 3);
       }
     });
+    if (perf) perf.frame(dt, performance.now() - began);
     frame++;
     requestAnimationFrame(draw);
   }
+
+  // ---------- Speed readout and speed run: the shared toy module (/lib/hp-perf.js) ----------
+  // A switch and a button at the end of the knobs. The run steps through every pick-one knob's choices
+  // and every labelled button, turns every slider to its top and then its bottom, closes and opens the knobs,
+  // then puts every knob back. Nothing is sent anywhere: the report is for copying or saving.
+  let perf = null;
+  import('/lib/hp-perf.js').then(({ createPerf }) => {
+    perf = createPerf({
+      toy: 'lightning-fingers-shader',
+      where: () => (drawer.hidden ? 'bottom' : 'top'),
+      info: () => ({ canvas: canvas.width + 'x' + canvas.height, scale }),
+      lines: () => ['screen ' + canvas.width + '×' + canvas.height + ' · resolution ×' + scale.toFixed(2)],
+    });
+    const knobFor = (name) => document.getElementById('k-' + name);
+    function setKnob(i, v) {
+      val[i.NAME] = v;
+      const el = knobFor(i.NAME);
+      if (i.TYPE === 'float' && outputs[i.NAME]) { outputs[i.NAME].r.value = v; outputs[i.NAME].o.textContent = (+v).toFixed(2); manual[i.NAME] = performance.now(); }
+      else if (i.TYPE === 'long' && el && el.tagName === 'SELECT') el.value = v;
+      else if (i.TYPE === 'long' && el) el.querySelectorAll('button').forEach((b, k) => { const on = (i.VALUES || [])[k] === v; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+      else if (i.TYPE === 'bool' && el) el.checked = !!v;
+    }
+    const shown = (i) => knobFor(i.NAME);
+    function speedRun() {
+      const keep = JSON.parse(JSON.stringify(val)), knobsOpen = !drawer.hidden;
+      const moves = [];
+      inputs.forEach((i) => {
+        if (!shown(i)) return;
+        if (i.TYPE === 'long') (i.VALUES || []).forEach((v, k) => moves.push({ mark: (i.LABEL || i.NAME) + ': ' + ((i.LABELS || [])[k] ?? v), run: () => setKnob(i, v) }));
+        else if (i.TYPE === 'event') moves.push({ mark: i.LABEL || i.NAME, run: () => fired.add(i.NAME) });
+        else if (i.TYPE === 'bool') moves.push({ mark: (i.LABEL || i.NAME) + ' switched', run: () => setKnob(i, !val[i.NAME]) });
+      });
+      const floats = inputs.filter((i) => i.TYPE === 'float' && outputs[i.NAME] && !MUSIC.has(i.NAME));
+      moves.push({ mark: 'every slider at its top', run: () => floats.forEach((i) => setKnob(i, i.MAX)) });
+      moves.push({ mark: 'every slider at its bottom', run: () => floats.forEach((i) => setKnob(i, i.MIN)) });
+      moves.push({ mark: 'sliders back', run: () => floats.forEach((i) => setKnob(i, keep[i.NAME])) });
+      const per = 32 / Math.max(1, moves.length);
+      const steps = moves.map((m, k) => ({ at: 1 + k * per, ...m }));
+      steps.push({ at: 34, mark: knobsOpen ? 'knobs closed' : 'knobs open', run: () => tk.click() });
+      steps.push({ at: 37, mark: 'knobs back', run: () => { if (drawer.hidden === knobsOpen) tk.click(); } });
+      return {
+        seconds: 40, steps,
+        done: () => { inputs.forEach((i) => { if (i.NAME in keep && i.TYPE !== 'event') setKnob(i, keep[i.NAME]); }); if (drawer.hidden === knobsOpen) tk.click(); },
+      };
+    }
+    perf.mountControls(knobs, { spec: speedRun, rowClass: 'knob wide' });
+    perf.autorun(speedRun());
+  });
   requestAnimationFrame(draw);
 })();
 </script>
